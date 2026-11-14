@@ -1,0 +1,319 @@
+<template>
+  <div class="container py-4" style="max-width: 820px">
+    <div class="mb-4">
+      <h1 class="h3 fw-bold mb-1">Paramètres</h1>
+      <p class="text-body-secondary mb-0">
+        Personnalisez votre confort de lecture, vos notifications et vos sauvegardes locales
+      </p>
+    </div>
+
+    <!-- Lecture -->
+    <div class="card shadow-sm border-0 mb-4">
+      <div class="card-body p-4">
+        <h5 class="fw-bold mb-3">
+          <i class="bi bi-book text-primary me-2"></i>Lecture & Affichage
+        </h5>
+
+        <div class="row g-3 mb-3">
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Police</label>
+            <select v-model="settingsStore.fontFamily" class="form-select">
+              <option value="Arial">Arial</option>
+              <option value="Georgia">Georgia</option>
+              <option value="Open Sans">Open Sans</option>
+              <option value="Merriweather">Merriweather</option>
+            </select>
+          </div>
+
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Thème</label>
+            <select v-model="settingsStore.theme" class="form-select">
+              <option value="light">Clair</option>
+              <option value="dark">Sombre</option>
+              <option value="auto">Automatique (système)</option>
+            </select>
+          </div>
+
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">
+              Taille du texte : {{ settingsStore.fontSize }} px
+            </label>
+            <input
+              v-model.number="settingsStore.fontSize"
+              type="range"
+              min="12"
+              max="32"
+              step="1"
+              class="form-range"
+            />
+          </div>
+
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">
+              Interligne : {{ settingsStore.lineHeight }}
+            </label>
+            <input
+              v-model.number="settingsStore.lineHeight"
+              type="range"
+              min="1.0"
+              max="2.5"
+              step="0.1"
+              class="form-range"
+            />
+          </div>
+
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Longueur du résumé par défaut</label>
+            <select v-model="settingsStore.summaryLength" class="form-select">
+              <option value="short">Court (~50 mots)</option>
+              <option value="medium">Moyen (~100 mots)</option>
+              <option value="long">Long (~200 mots)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="p-3 rounded border bg-body-tertiary">
+          <div class="small text-body-secondary mb-1">Aperçu :</div>
+          <p
+            class="mb-0"
+            :style="{
+              fontFamily: `'${settingsStore.fontFamily}', serif`,
+              fontSize: `${settingsStore.fontSize}px`,
+              lineHeight: settingsStore.lineHeight,
+            }"
+          >
+            Edmond Dantès aperçut les remparts du Château d'If se découper dans la lumière du soir.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Rythme par défaut -->
+    <div class="card shadow-sm border-0 mb-4">
+      <div class="card-body p-4">
+        <h5 class="fw-bold mb-3">
+          <i class="bi bi-speedometer2 text-primary me-2"></i>Rythme par défaut (nouveaux livres)
+        </h5>
+
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Mots par jour (100 – 5000)</label>
+            <input
+              v-model.number="settingsStore.defaultWordsPerDay"
+              type="number"
+              min="100"
+              max="5000"
+              step="25"
+              class="form-control"
+            />
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Tolérance (± mots)</label>
+            <input
+              v-model.number="settingsStore.defaultTolerance"
+              type="number"
+              min="0"
+              max="100"
+              step="5"
+              class="form-control"
+            />
+          </div>
+          <div class="col-12">
+            <div class="form-check form-switch">
+              <input
+                id="defaultWeekends"
+                v-model="settingsStore.defaultReadWeekends"
+                class="form-check-input"
+                type="checkbox"
+              />
+              <label class="form-check-label" for="defaultWeekends">
+                Lecture le week-end par défaut
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Notifications locales -->
+    <div class="card shadow-sm border-0 mb-4">
+      <div class="card-body p-4">
+        <h5 class="fw-bold mb-3">
+          <i class="bi bi-bell text-primary me-2"></i>Notifications locales
+        </h5>
+
+        <div class="form-check form-switch mb-3">
+          <input
+            id="notifSwitch"
+            v-model="settingsStore.notificationsEnabled"
+            class="form-check-input"
+            type="checkbox"
+            @change="onToggleNotifications"
+          />
+          <label class="form-check-label fw-semibold" for="notifSwitch">
+            Activer le rappel quotidien (« Votre lecture du jour est disponible. »)
+          </label>
+        </div>
+
+        <div class="row g-3 align-items-end">
+          <div class="col-sm-4">
+            <label class="form-label small fw-semibold">Heure de notification</label>
+            <input
+              v-model="settingsStore.notificationTime"
+              type="time"
+              class="form-control"
+              :disabled="!settingsStore.notificationsEnabled"
+            />
+          </div>
+          <div class="col-sm-8 d-flex flex-wrap gap-2">
+            <button
+              type="button"
+              class="btn btn-outline-primary btn-sm"
+              @click="requestPerm"
+            >
+              Autoriser les notifications ({{ permissionLabel }})
+            </button>
+            <button
+              type="button"
+              class="btn btn-outline-secondary btn-sm"
+              @click="testNotification"
+            >
+              Tester maintenant
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sauvegardes -->
+    <div class="card shadow-sm border-0">
+      <div class="card-body p-4">
+        <h5 class="fw-bold mb-3">
+          <i class="bi bi-hdd text-primary me-2"></i>Sauvegardes locales
+        </h5>
+        <p class="small text-body-secondary mb-3">
+          Exportez ou restaurez l'ensemble de votre bibliothèque, progression et statistiques au format JSON, sans connexion Internet.
+        </p>
+
+        <div class="d-flex flex-wrap gap-2 mb-3">
+          <button type="button" class="btn btn-outline-primary" @click="handleExport">
+            <i class="bi bi-download me-2"></i>Exporter une sauvegarde
+          </button>
+
+          <button
+            type="button"
+            class="btn btn-outline-secondary"
+            @click="backupInput?.click()"
+          >
+            <i class="bi bi-upload me-2"></i>Importer une sauvegarde
+          </button>
+          <input
+            ref="backupInput"
+            type="file"
+            accept=".json,application/json"
+            class="d-none"
+            @change="handleImport"
+          />
+
+          <button
+            type="button"
+            class="btn btn-outline-warning"
+            @click="settingsStore.resetToDefaults()"
+          >
+            Réinitialiser les préférences
+          </button>
+
+          <button
+            type="button"
+            class="btn btn-outline-danger ms-auto"
+            @click="handleClearAll"
+          >
+            <i class="bi bi-trash me-1"></i>Tout effacer
+          </button>
+        </div>
+
+        <div v-if="backupMsg" class="alert alert-info py-2 px-3 small mb-0">
+          {{ backupMsg }}
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { ref, computed } from 'vue';
+import { useSettingsStore } from '@/stores/settingsStore.js';
+import { useLibraryStore } from '@/stores/libraryStore.js';
+import {
+  getNotificationPermission,
+  requestNotificationPermission,
+  showLocalNotification,
+} from '@/services/notifications.js';
+
+const settingsStore = useSettingsStore();
+const libraryStore = useLibraryStore();
+
+const backupInput = ref(null);
+const backupMsg = ref('');
+const permissionState = ref(getNotificationPermission());
+
+const permissionLabel = computed(() => {
+  if (permissionState.value === 'granted') return 'Autorisé';
+  if (permissionState.value === 'denied') return 'Refusé';
+  if (permissionState.value === 'unsupported') return 'Non supporté';
+  return 'À demander';
+});
+
+async function requestPerm() {
+  permissionState.value = await requestNotificationPermission();
+}
+
+async function onToggleNotifications() {
+  if (settingsStore.notificationsEnabled && permissionState.value === 'default') {
+    await requestPerm();
+  }
+}
+
+function testNotification() {
+  const ok = showLocalNotification(
+    'Daily Reader',
+    'Votre lecture du jour est disponible.'
+  );
+  if (!ok) {
+    alert("Veuillez d'abord autoriser les notifications dans votre navigateur.");
+  }
+}
+
+async function handleExport() {
+  const json = await libraryStore.exportBackup();
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `daily-reader-backup-${new Date().toISOString().slice(0, 10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  backupMsg.value = 'Sauvegarde exportée avec succès.';
+}
+
+async function handleImport(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  try {
+    const text = await file.text();
+    await libraryStore.importBackup(text);
+    backupMsg.value = 'Sauvegarde importée avec succès.';
+  } catch (err) {
+    backupMsg.value = err?.message || "Erreur lors de l'import de la sauvegarde.";
+  } finally {
+    if (backupInput.value) backupInput.value.value = '';
+  }
+}
+
+async function handleClearAll() {
+  if (confirm('Supprimer tous les livres, progressions et statistiques ? Cette action est irréversible.')) {
+    await libraryStore.clearAllData();
+    backupMsg.value = 'Toutes les données locales ont été effacées.';
+  }
+}
+</script>
