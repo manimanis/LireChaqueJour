@@ -7,6 +7,8 @@ body {
   background-color: var(--bs-body-bg);
   color: var(--bs-body-color);
   transition: background-color 0.2s ease, color 0.2s ease;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .reading-surface {
@@ -18,6 +20,38 @@ body {
   text-align: justify;
   hyphens: auto;
   word-break: break-word;
+}
+
+@media (max-width: 575.98px) {
+  .reading-prose {
+    text-align: left;
+  }
+}
+
+.mobile-bottom-nav {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  z-index: 1030;
+}
+
+.mobile-bottom-nav .nav-link {
+  font-size: 0.7rem;
+  padding: 0.45rem 0.25rem;
+  color: var(--bs-secondary-color);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.mobile-bottom-nav .nav-link.active {
+  color: var(--bs-primary);
+  font-weight: 600;
+}
+
+@media (max-width: 767.98px) {
+  .has-mobile-bottom-nav {
+    padding-bottom: calc(4.25rem + env(safe-area-inset-bottom, 0px));
+  }
 }
 
 .reading-prose p {

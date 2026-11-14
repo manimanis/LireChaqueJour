@@ -20,7 +20,7 @@
             <div class="flex-grow-1">
               <div v-if="libraryStore.books.length > 1" class="mb-2">
                 <select
-                  class="form-select form-select-sm w-auto"
+                  class="form-select form-select-sm w-auto mw-100"
                   :value="book.id"
                   aria-label="Changer de livre"
                   @change="switchBook($event.target.value)"
@@ -129,7 +129,7 @@
 
       <!-- Segment Content -->
       <div class="card shadow-sm border-0 mb-4">
-        <div class="card-body p-4 p-md-5">
+        <div class="card-body p-3 p-sm-4 p-md-5">
           <div v-if="segmentLoading" class="text-center py-5 text-body-secondary">
             <div class="spinner-border mb-2" role="status"></div>
             <div>Chargement du segment…</div>

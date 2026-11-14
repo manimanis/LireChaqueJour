@@ -57,8 +57,8 @@ defineProps({
 defineEmits(['change-length', 'regenerate']);
 
 const lengthOptions = [
-  { value: 'short', label: 'Court (50)' },
-  { value: 'medium', label: 'Moyen (100)' },
-  { value: 'long', label: 'Long (200)' },
+  { value: 'short', label: 'Court' },
+  { value: 'medium', label: 'Moyen' },
+  { value: 'long', label: 'Long' },
 ];
 </script>

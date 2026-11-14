@@ -1,5 +1,5 @@
 <template>
-  <nav class="navbar navbar-expand-lg border-bottom sticky-top bg-body-tertiary">
+  <nav class="navbar navbar-expand-md border-bottom sticky-top bg-body-tertiary">
     <div class="container">
       <RouterLink class="navbar-brand d-flex align-items-center gap-2 fw-bold" to="/">
         <i class="bi bi-book-half text-primary fs-4"></i>
@@ -36,7 +36,7 @@
         </button>
 
         <button
-          class="navbar-toggler"
+          class="navbar-toggler d-none"
           type="button"
           data-bs-toggle="collapse"
           data-bs-target="#mainNavbar"
