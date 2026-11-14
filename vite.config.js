@@ -4,8 +4,9 @@ import { VitePWA } from 'vite-plugin-pwa';
 import { fileURLToPath, URL } from 'node:url';
 
 const repoName = process.env.GITHUB_REPOSITORY?.split('/')[1];
+const isUserSite = repoName?.endsWith('.github.io');
 const base =
-  process.env.GITHUB_ACTIONS && repoName ? `/${repoName}/` : '/';
+  process.env.GITHUB_ACTIONS && repoName && !isUserSite ? `/${repoName}/` : '/';
 
 export default defineConfig({
   base,
