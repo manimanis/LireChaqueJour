@@ -16,6 +16,10 @@
         <i class="bi bi-collection fs-5"></i>
         <span>Biblio</span>
       </RouterLink>
+      <RouterLink class="nav-link" active-class="active" to="/vocabulary">
+        <i class="bi bi-journal-bookmark fs-5"></i>
+        <span>Vocab</span>
+      </RouterLink>
       <RouterLink class="nav-link" active-class="active" to="/stats">
         <i class="bi bi-bar-chart-line fs-5"></i>
         <span>Stats</span>

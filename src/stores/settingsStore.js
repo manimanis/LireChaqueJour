@@ -15,6 +15,10 @@ const DEFAULT_SETTINGS = {
   notificationsEnabled: false,
   notificationTime: '20:00',
   currentBookId: null,
+  dictionaryEnabled: true,
+  dictionaryProvider: 'wiktionary_fr',
+  dictionaryCustomUrl: '',
+  dictionaryAutoOpen: false,
 };
 
 function loadSavedSettings() {
@@ -41,6 +45,10 @@ export const useSettingsStore = defineStore('settings', () => {
   const notificationsEnabled = ref(initial.notificationsEnabled);
   const notificationTime = ref(initial.notificationTime);
   const currentBookId = ref(initial.currentBookId);
+  const dictionaryEnabled = ref(initial.dictionaryEnabled ?? DEFAULT_SETTINGS.dictionaryEnabled);
+  const dictionaryProvider = ref(initial.dictionaryProvider ?? DEFAULT_SETTINGS.dictionaryProvider);
+  const dictionaryCustomUrl = ref(initial.dictionaryCustomUrl ?? DEFAULT_SETTINGS.dictionaryCustomUrl);
+  const dictionaryAutoOpen = ref(initial.dictionaryAutoOpen ?? DEFAULT_SETTINGS.dictionaryAutoOpen);
 
   const persist = () => {
     try {
@@ -58,6 +66,10 @@ export const useSettingsStore = defineStore('settings', () => {
           notificationsEnabled: notificationsEnabled.value,
           notificationTime: notificationTime.value,
           currentBookId: currentBookId.value,
+          dictionaryEnabled: dictionaryEnabled.value,
+          dictionaryProvider: dictionaryProvider.value,
+          dictionaryCustomUrl: dictionaryCustomUrl.value,
+          dictionaryAutoOpen: dictionaryAutoOpen.value,
         })
       );
     } catch {
@@ -90,6 +102,10 @@ export const useSettingsStore = defineStore('settings', () => {
       notificationsEnabled,
       notificationTime,
       currentBookId,
+      dictionaryEnabled,
+      dictionaryProvider,
+      dictionaryCustomUrl,
+      dictionaryAutoOpen,
     ],
     () => {
       persist();
@@ -118,6 +134,10 @@ export const useSettingsStore = defineStore('settings', () => {
     defaultReadWeekends.value = DEFAULT_SETTINGS.defaultReadWeekends;
     notificationsEnabled.value = DEFAULT_SETTINGS.notificationsEnabled;
     notificationTime.value = DEFAULT_SETTINGS.notificationTime;
+    dictionaryEnabled.value = DEFAULT_SETTINGS.dictionaryEnabled;
+    dictionaryProvider.value = DEFAULT_SETTINGS.dictionaryProvider;
+    dictionaryCustomUrl.value = DEFAULT_SETTINGS.dictionaryCustomUrl;
+    dictionaryAutoOpen.value = DEFAULT_SETTINGS.dictionaryAutoOpen;
   }
 
   return {
@@ -132,6 +152,10 @@ export const useSettingsStore = defineStore('settings', () => {
     notificationsEnabled,
     notificationTime,
     currentBookId,
+    dictionaryEnabled,
+    dictionaryProvider,
+    dictionaryCustomUrl,
+    dictionaryAutoOpen,
     applyTheme,
     resetToDefaults,
   };

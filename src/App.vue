@@ -10,6 +10,7 @@
       </div>
     </footer>
     <MobileBottomNav />
+    <WordDefinitionModal />
   </div>
 </template>
 
@@ -17,6 +18,7 @@
 import { onMounted, onUnmounted } from 'vue';
 import AppNavbar from '@/components/AppNavbar.vue';
 import MobileBottomNav from '@/components/MobileBottomNav.vue';
+import WordDefinitionModal from '@/components/WordDefinitionModal.vue';
 import { useLibraryStore } from '@/stores/libraryStore.js';
 import { useSettingsStore } from '@/stores/settingsStore.js';
 import { startNotificationScheduler } from '@/services/notifications.js';

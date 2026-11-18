@@ -306,11 +306,13 @@ export const useLibraryStore = defineStore('library', () => {
       db.segments,
       db.progress,
       db.summaries,
+      db.vocabulary,
       async () => {
         await db.books.delete(bookId);
         await db.segments.where('bookId').equals(bookId).delete();
         await db.progress.delete(bookId);
         await db.summaries.where('bookId').equals(bookId).delete();
+        await db.vocabulary.where('bookId').equals(bookId).delete();
       }
     );
 
@@ -420,13 +422,14 @@ export const useLibraryStore = defineStore('library', () => {
   });
 
   async function exportBackup() {
-    const [allBooks, allSegments, allProgress, allSummaries, allSessions] =
+    const [allBooks, allSegments, allProgress, allSummaries, allSessions, allVocabulary] =
       await Promise.all([
         db.books.toArray(),
         db.segments.toArray(),
         db.progress.toArray(),
         db.summaries.toArray(),
         db.sessions.toArray(),
+        db.vocabulary.toArray(),
       ]);
 
     return JSON.stringify(
@@ -438,6 +441,7 @@ export const useLibraryStore = defineStore('library', () => {
         progress: allProgress,
         summaries: allSummaries,
         sessions: allSessions,
+        vocabulary: allVocabulary,
       },
       null,
       2
@@ -457,12 +461,14 @@ export const useLibraryStore = defineStore('library', () => {
       db.progress,
       db.summaries,
       db.sessions,
+      db.vocabulary,
       async () => {
         if (data.books?.length) await db.books.bulkPut(data.books);
         if (data.segments?.length) await db.segments.bulkPut(data.segments);
         if (data.progress?.length) await db.progress.bulkPut(data.progress);
         if (data.summaries?.length) await db.summaries.bulkPut(data.summaries);
         if (data.sessions?.length) await db.sessions.bulkPut(data.sessions);
+        if (data.vocabulary?.length) await db.vocabulary.bulkPut(data.vocabulary);
       }
     );
 
@@ -477,18 +483,93 @@ export const useLibraryStore = defineStore('library', () => {
       db.progress,
       db.summaries,
       db.sessions,
+      db.vocabulary,
       async () => {
         await db.books.clear();
         await db.segments.clear();
         await db.progress.clear();
         await db.summaries.clear();
         await db.sessions.clear();
+        await db.vocabulary.clear();
       }
     );
     books.value = [];
     progressMap.value = {};
     sessions.value = [];
     settingsStore.currentBookId = null;
+  }
+
+  /**
+   * Save or update a word lookup in vocabulary history
+   */
+  async function recordWordLookup(entry) {
+    if (!entry || !entry.word) return null;
+    const wordKey = entry.word.trim().toLowerCase();
+    const bookId = entry.bookId || 'general';
+
+    try {
+      const existing = await db.vocabulary
+        .where('bookId')
+        .equals(bookId)
+        .filter((item) => item.word.toLowerCase() === wordKey)
+        .first();
+
+      if (existing) {
+        await db.vocabulary.update(existing.id, {
+          ...entry,
+          lookedUpAt: new Date().toISOString(),
+          lookupCount: (existing.lookupCount || 1) + 1,
+        });
+        return existing.id;
+      } else {
+        const id = await db.vocabulary.add({
+          ...entry,
+          lookedUpAt: new Date().toISOString(),
+          lookupCount: 1,
+        });
+        return id;
+      }
+    } catch (err) {
+      console.warn('Erreur lors de l\'enregistrement du mot dans le vocabulaire:', err);
+      return null;
+    }
+  }
+
+  /**
+   * Retrieve vocabulary list, optionally filtered by bookId
+   */
+  async function getVocabulary(bookId = null) {
+    try {
+      let query;
+      if (bookId && bookId !== 'all') {
+        query = db.vocabulary.where('bookId').equals(bookId);
+      } else {
+        query = db.vocabulary.toCollection();
+      }
+      const list = await query.sortBy('lookedUpAt');
+      return list.reverse(); // Most recent first
+    } catch (err) {
+      console.warn('Erreur de lecture du vocabulaire:', err);
+      return [];
+    }
+  }
+
+  /**
+   * Delete a single word from vocabulary
+   */
+  async function deleteVocabularyWord(id) {
+    await db.vocabulary.delete(id);
+  }
+
+  /**
+   * Clear vocabulary (for a specific book or for all)
+   */
+  async function clearVocabulary(bookId = null) {
+    if (bookId && bookId !== 'all') {
+      await db.vocabulary.where('bookId').equals(bookId).delete();
+    } else {
+      await db.vocabulary.clear();
+    }
   }
 
   return {
@@ -515,5 +596,9 @@ export const useLibraryStore = defineStore('library', () => {
     exportBackup,
     importBackup,
     clearAllData,
+    recordWordLookup,
+    getVocabulary,
+    deleteVocabularyWord,
+    clearVocabulary,
   };
 });

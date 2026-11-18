@@ -66,6 +66,11 @@
             </RouterLink>
           </li>
           <li class="nav-item">
+            <RouterLink class="nav-link" active-class="active fw-semibold" to="/vocabulary">
+              <i class="bi bi-journal-bookmark me-1"></i>Vocabulaire
+            </RouterLink>
+          </li>
+          <li class="nav-item">
             <RouterLink class="nav-link" active-class="active fw-semibold" to="/stats">
               <i class="bi bi-bar-chart-line me-1"></i>Statistiques
             </RouterLink>

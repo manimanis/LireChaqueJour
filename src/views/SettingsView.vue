@@ -135,6 +135,119 @@
       </div>
     </div>
 
+    <!-- Dictionnaire & Définitions -->
+    <div class="card shadow-sm border-0 mb-4">
+      <div class="card-body p-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h5 class="fw-bold mb-0">
+            <i class="bi bi-book-half text-primary me-2"></i>Dictionnaire & Définition de mots
+          </h5>
+          <div class="form-check form-switch mb-0">
+            <input
+              id="dictSwitch"
+              v-model="settingsStore.dictionaryEnabled"
+              class="form-check-input"
+              type="checkbox"
+            />
+            <label class="form-check-label fw-semibold" for="dictSwitch">
+              {{ settingsStore.dictionaryEnabled ? 'Activé' : 'Désactivé' }}
+            </label>
+          </div>
+        </div>
+
+        <p class="small text-body-secondary mb-3">
+          Obtenez la définition instantanée de tout mot sélectionné au cours de votre lecture grâce à une API de dictionnaire publique.
+        </p>
+
+        <div v-if="settingsStore.dictionaryEnabled" class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Fournisseur d'API Dictionnaire</label>
+            <select v-model="settingsStore.dictionaryProvider" class="form-select">
+              <option
+                v-for="prov in DICTIONARY_PROVIDERS"
+                :key="prov.id"
+                :value="prov.id"
+              >
+                {{ prov.name }} ({{ prov.language }})
+              </option>
+            </select>
+            <div class="form-text small">
+              {{ selectedProviderDescription }}
+            </div>
+          </div>
+
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Mode de déclenchement</label>
+            <select v-model="settingsStore.dictionaryAutoOpen" class="form-select">
+              <option :value="false">Bouton discret « Définir » sur sélection (Recommandé)</option>
+              <option :value="true">Ouverture automatique immédiate</option>
+            </select>
+            <div class="form-text small">
+              Le bouton discret évite les ouvertures intempestives pendant la lecture.
+            </div>
+          </div>
+
+          <!-- URL personnalisée si custom -->
+          <div v-if="settingsStore.dictionaryProvider === 'custom'" class="col-12">
+            <label class="form-label fw-semibold">Modèle d'URL API personnalisée</label>
+            <input
+              v-model="settingsStore.dictionaryCustomUrl"
+              type="url"
+              class="form-control"
+              placeholder="https://api.monsite.org/definition/{word}"
+            />
+            <div class="form-text small">
+              Insérez la variable <code>{word}</code> qui sera remplacée par le mot recherché.
+            </div>
+          </div>
+
+          <!-- Test en direct -->
+          <div class="col-12 mt-3">
+            <div class="p-3 rounded border bg-body-tertiary">
+              <label class="form-label fw-semibold small mb-2">
+                <i class="bi bi-play-circle text-primary me-1"></i>Tester l'API sélectionnée
+              </label>
+              <div class="input-group input-group-sm mb-2" style="max-width: 460px">
+                <input
+                  v-model="testWord"
+                  type="text"
+                  class="form-control"
+                  placeholder="Ex : livre, aventure, courage..."
+                  @keyup.enter="runTestQuery"
+                />
+                <button
+                  type="button"
+                  class="btn btn-primary"
+                  :disabled="testLoading || !testWord.trim()"
+                  @click="runTestQuery"
+                >
+                  <span v-if="testLoading" class="spinner-border spinner-border-sm me-1"></span>
+                  <i v-else class="bi bi-search me-1"></i>Tester
+                </button>
+              </div>
+
+              <div v-if="testResult" class="alert alert-success py-2 px-3 small mb-0">
+                <strong>{{ testResult.word }}</strong>
+                <span v-if="testResult.pronunciation" class="text-body-secondary ms-2 font-monospace">
+                  {{ testResult.pronunciation }}
+                </span>
+                <span v-if="testResult.entries?.[0]?.partOfSpeech" class="badge text-bg-light border ms-2">
+                  {{ testResult.entries[0].partOfSpeech }}
+                </span>
+                <div class="mt-1 text-break">
+                  {{ testResult.entries?.[0]?.definitions?.[0] }}
+                </div>
+              </div>
+
+              <div v-else-if="testError" class="alert alert-warning py-2 px-3 small mb-0">
+                <i class="bi bi-exclamation-triangle me-1"></i>{{ testError }}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Notifications locales -->
     <div class="card shadow-sm border-0 mb-4">
       <div class="card-body p-4">
@@ -249,9 +362,42 @@ import {
   requestNotificationPermission,
   showLocalNotification,
 } from '@/services/notifications.js';
+import {
+  DICTIONARY_PROVIDERS,
+  fetchWordDefinition,
+} from '@/services/dictionaryService.js';
 
 const settingsStore = useSettingsStore();
 const libraryStore = useLibraryStore();
+
+const testWord = ref('lecture');
+const testLoading = ref(false);
+const testResult = ref(null);
+const testError = ref(null);
+
+const selectedProviderDescription = computed(() => {
+  const prov = DICTIONARY_PROVIDERS.find(p => p.id === settingsStore.dictionaryProvider);
+  return prov?.description || '';
+});
+
+async function runTestQuery() {
+  if (!testWord.value.trim()) return;
+  testLoading.value = true;
+  testResult.value = null;
+  testError.value = null;
+
+  try {
+    const res = await fetchWordDefinition(testWord.value, {
+      provider: settingsStore.dictionaryProvider,
+      customUrl: settingsStore.dictionaryCustomUrl,
+    });
+    testResult.value = res;
+  } catch (err) {
+    testError.value = err.message || 'Erreur lors de la recherche.';
+  } finally {
+    testLoading.value = false;
+  }
+}
 
 const backupInput = ref(null);
 const backupMsg = ref('');

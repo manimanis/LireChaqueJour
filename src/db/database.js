@@ -10,4 +10,8 @@ db.version(1).stores({
   sessions: '++id, bookId, date',
 });
 
+db.version(2).stores({
+  vocabulary: '++id, word, bookId, lookedUpAt',
+});
+
 export default db;

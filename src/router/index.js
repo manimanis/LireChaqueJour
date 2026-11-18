@@ -5,6 +5,7 @@ import BookDetailView from '@/views/BookDetailView.vue';
 import TodayView from '@/views/TodayView.vue';
 import StatsView from '@/views/StatsView.vue';
 import SettingsView from '@/views/SettingsView.vue';
+import VocabularyView from '@/views/VocabularyView.vue';
 
 const routes = [
   {
@@ -30,6 +31,12 @@ const routes = [
     name: 'today',
     component: TodayView,
     meta: { title: "Aujourd'hui" },
+  },
+  {
+    path: '/vocabulary',
+    name: 'vocabulary',
+    component: VocabularyView,
+    meta: { title: 'Vocabulaire' },
   },
   {
     path: '/stats',

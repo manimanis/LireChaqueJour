@@ -124,6 +124,17 @@
               <option :value="2.3">2.3</option>
             </select>
           </div>
+
+          <div>
+            <RouterLink
+              :to="`/vocabulary?bookId=${book.id}`"
+              class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1"
+              title="Consulter le carnet de vocabulaire pour ce livre"
+            >
+              <i class="bi bi-journal-bookmark"></i>
+              <span>Vocabulaire</span>
+            </RouterLink>
+          </div>
         </div>
       </div>
 

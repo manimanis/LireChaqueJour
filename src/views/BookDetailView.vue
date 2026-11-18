@@ -34,6 +34,9 @@
                 <RouterLink :to="`/today/${book.id}`" class="btn btn-primary">
                   <i class="bi bi-book-half me-2"></i>Lire maintenant
                 </RouterLink>
+                <RouterLink :to="`/vocabulary?bookId=${book.id}`" class="btn btn-outline-secondary">
+                  <i class="bi bi-journal-bookmark me-2"></i>Vocabulaire du livre
+                </RouterLink>
               </div>
 
               <ul class="list-group list-group-flush text-start small">
