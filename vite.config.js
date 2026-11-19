@@ -16,8 +16,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg'],
       manifest: {
-        name: 'Daily Reader',
-        short_name: 'DailyReader',
+        name: 'Lire chaque jour',
+        short_name: 'LireChaqueJour',
         description: 'Application web offline de lecture quotidienne d\'EPUB',
         theme_color: '#0d6efd',
         background_color: '#ffffff',

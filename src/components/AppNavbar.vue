@@ -2,8 +2,14 @@
   <nav class="navbar navbar-expand-md border-bottom sticky-top bg-body-tertiary">
     <div class="container">
       <RouterLink class="navbar-brand d-flex align-items-center gap-2 fw-bold" to="/">
-        <i class="bi bi-book-half text-primary fs-4"></i>
-        <span>Daily Reader</span>
+        <img
+          :src="logoUrl"
+          alt=""
+          width="28"
+          height="28"
+          class="rounded-2 shadow-sm flex-shrink-0"
+        />
+        <span>Lire chaque jour</span>
       </RouterLink>
 
       <div class="d-flex align-items-center gap-2 order-lg-last">
@@ -91,6 +97,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useSettingsStore } from '@/stores/settingsStore.js';
 
 const settingsStore = useSettingsStore();
+const logoUrl = `${import.meta.env.BASE_URL}favicon.svg`;
 const isOnline = ref(typeof navigator !== 'undefined' ? navigator.onLine : true);
 const installPromptEvent = ref(null);
 

@@ -61,7 +61,7 @@ const router = createRouter({
 });
 
 router.afterEach((to) => {
-  const pageTitle = to.meta?.title ? `${to.meta.title} — Daily Reader` : 'Daily Reader';
+  const pageTitle = to.meta?.title ? `${to.meta.title} — Lire chaque jour` : 'Lire chaque jour';
   document.title = pageTitle;
 });
 

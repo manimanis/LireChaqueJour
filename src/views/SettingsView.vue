@@ -457,7 +457,7 @@ async function onToggleNotifications() {
 
 function testNotification() {
   const ok = showLocalNotification(
-    'Daily Reader',
+    'Lire chaque jour',
     'Votre lecture du jour est disponible.'
   );
   if (!ok) {
@@ -471,7 +471,7 @@ async function handleExport() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `daily-reader-backup-${new Date().toISOString().slice(0, 10)}.json`;
+  a.download = `lire-chaque-jour-backup-${new Date().toISOString().slice(0, 10)}.json`;
   a.click();
   URL.revokeObjectURL(url);
   backupMsg.value = 'Sauvegarde exportée avec succès.';

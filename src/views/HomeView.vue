@@ -69,7 +69,7 @@
         <div v-else class="card h-100 shadow-sm border-0 bg-body-tertiary">
           <div class="card-body p-4 p-md-5 d-flex flex-column justify-content-center text-center">
             <i class="bi bi-journal-bookmark fs-1 text-primary mb-3"></i>
-            <h1 class="h3 fw-bold mb-2">Bienvenue dans Daily Reader</h1>
+            <h1 class="h3 fw-bold mb-2">Bienvenue dans Lire chaque jour</h1>
             <p class="text-body-secondary mb-4 mx-auto" style="max-width: 520px">
               Importez un livre EPUB local pour le découper automatiquement en lectures quotidiennes adaptées à votre rythme, avec résumé intelligent des chapitres déjà lus.
             </p>

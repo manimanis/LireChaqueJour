@@ -6,7 +6,7 @@
     </main>
     <footer class="border-top py-3 text-center small text-body-secondary bg-body-tertiary">
       <div class="container">
-        Daily Reader v1.0 • Lecture quotidienne d'EPUB 100 % hors ligne
+        Lire chaque jour v1.0 • Lecture quotidienne d'EPUB 100 % hors ligne
       </div>
     </footer>
     <MobileBottomNav />

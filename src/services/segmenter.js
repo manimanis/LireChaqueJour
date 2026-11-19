@@ -1,5 +1,5 @@
 /**
- * Smart text segmentation service for Daily Reader.
+ * Smart text segmentation service for Lire chaque jour.
  * Splits book text into daily segments respecting word, sentence, and paragraph boundaries.
  */
 

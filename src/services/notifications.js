@@ -74,7 +74,7 @@ export function startNotificationScheduler(getState) {
       const body = bookTitle
         ? `Votre lecture du jour pour « ${bookTitle} » est disponible.`
         : 'Votre lecture du jour est disponible.';
-      const sent = showLocalNotification('Daily Reader', body);
+      const sent = showLocalNotification('Lire chaque jour', body);
       if (sent) {
         localStorage.setItem(LAST_NOTIFIED_KEY, todayStr);
       }
