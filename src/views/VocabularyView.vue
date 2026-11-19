@@ -22,7 +22,19 @@
           @click="startFlashcardsMode"
         >
           <i class="bi bi-play-circle-fill"></i>
-          <span>Réviser (Flashcards)</span>
+          <span>Flashcards</span>
+        </button>
+
+        <!-- Mini-Quiz QCM Button (Axe 6) -->
+        <button
+          v-if="filteredWords.length >= 3"
+          type="button"
+          class="btn btn-sm btn-outline-primary d-flex align-items-center gap-1 shadow-sm px-3"
+          title="Lancer un mini-quiz d'ancrage mémoriel à choix multiples"
+          @click="showQuizModal = true"
+        >
+          <i class="bi bi-patch-question-fill text-warning"></i>
+          <span>Mini-Quiz</span>
         </button>
 
         <!-- Export Dropdown -->
@@ -627,6 +639,13 @@
         </div>
       </div>
     </div>
+
+    <!-- Mini-Quiz Modal (Axe 6) -->
+    <VocabularyQuizModal
+      :show="showQuizModal"
+      :book-id="selectedBookId"
+      @close="showQuizModal = false"
+    />
   </div>
 </template>
 
@@ -634,6 +653,7 @@
 import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useLibraryStore } from '@/stores/libraryStore.js';
+import VocabularyQuizModal from '@/components/VocabularyQuizModal.vue';
 import {
   speakWord,
   generateAnkiCsv,
@@ -653,6 +673,7 @@ const sortBy = ref('recent');
 const expandedWords = ref(new Set());
 const copiedId = ref(null);
 const speakingWordId = ref(null);
+const showQuizModal = ref(false);
 
 // Flashcards state (Point 1 SRS)
 const isFlashcardsOpen = ref(false);

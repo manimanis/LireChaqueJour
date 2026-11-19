@@ -14,4 +14,9 @@ db.version(2).stores({
   vocabulary: '++id, word, bookId, lookedUpAt',
 });
 
+db.version(3).stores({
+  highlights: '++id, bookId, dayNumber, createdAt',
+  badges: 'id, unlockedAt',
+});
+
 export default db;

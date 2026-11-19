@@ -430,11 +430,13 @@ export const useLibraryStore = defineStore('library', () => {
         db.summaries.toArray(),
         db.sessions.toArray(),
         db.vocabulary.toArray(),
+        db.highlights.toArray(),
+        db.badges.toArray(),
       ]);
 
     return JSON.stringify(
       {
-        version: '1.0',
+        version: '1.1',
         exportedAt: new Date().toISOString(),
         books: allBooks,
         segments: allSegments,
@@ -442,6 +444,8 @@ export const useLibraryStore = defineStore('library', () => {
         summaries: allSummaries,
         sessions: allSessions,
         vocabulary: allVocabulary,
+        highlights: allHighlights || [],
+        badges: allBadges || [],
       },
       null,
       2
@@ -462,6 +466,8 @@ export const useLibraryStore = defineStore('library', () => {
       db.summaries,
       db.sessions,
       db.vocabulary,
+      db.highlights,
+      db.badges,
       async () => {
         if (data.books?.length) await db.books.bulkPut(data.books);
         if (data.segments?.length) await db.segments.bulkPut(data.segments);
@@ -469,6 +475,8 @@ export const useLibraryStore = defineStore('library', () => {
         if (data.summaries?.length) await db.summaries.bulkPut(data.summaries);
         if (data.sessions?.length) await db.sessions.bulkPut(data.sessions);
         if (data.vocabulary?.length) await db.vocabulary.bulkPut(data.vocabulary);
+        if (data.highlights?.length) await db.highlights.bulkPut(data.highlights);
+        if (data.badges?.length) await db.badges.bulkPut(data.badges);
       }
     );
 
@@ -484,6 +492,8 @@ export const useLibraryStore = defineStore('library', () => {
       db.summaries,
       db.sessions,
       db.vocabulary,
+      db.highlights,
+      db.badges,
       async () => {
         await db.books.clear();
         await db.segments.clear();
@@ -491,6 +501,8 @@ export const useLibraryStore = defineStore('library', () => {
         await db.summaries.clear();
         await db.sessions.clear();
         await db.vocabulary.clear();
+        await db.highlights.clear();
+        await db.badges.clear();
       }
     );
     books.value = [];
@@ -616,6 +628,73 @@ export const useLibraryStore = defineStore('library', () => {
     }
   }
 
+  /**
+   * Highlights & Notes
+   */
+  async function addHighlight({ bookId, dayNumber, text, color = 'yellow', note = '' }) {
+    if (!text || !bookId) return null;
+    const highlight = {
+      bookId,
+      dayNumber: Number(dayNumber) || 1,
+      text: text.trim(),
+      color,
+      note: note.trim(),
+      createdAt: new Date().toISOString(),
+    };
+    const id = await db.highlights.add(highlight);
+    return { ...highlight, id };
+  }
+
+  async function getHighlights(bookId = null) {
+    try {
+      let query;
+      if (bookId && bookId !== 'all') {
+        query = db.highlights.where('bookId').equals(bookId);
+      } else {
+        query = db.highlights.toCollection();
+      }
+      const list = await query.sortBy('createdAt');
+      return list.reverse();
+    } catch (err) {
+      console.warn('Erreur lecture surlignages:', err);
+      return [];
+    }
+  }
+
+  async function updateHighlight(id, updates) {
+    await db.highlights.update(id, updates);
+  }
+
+  async function deleteHighlight(id) {
+    await db.highlights.delete(id);
+  }
+
+  /**
+   * Badges & Gamification
+   */
+  async function getUnlockedBadges() {
+    try {
+      const list = await db.badges.toArray();
+      const map = {};
+      list.forEach(b => { map[b.id] = b.unlockedAt; });
+      return map;
+    } catch {
+      return {};
+    }
+  }
+
+  async function unlockBadge(badgeId) {
+    try {
+      const existing = await db.badges.get(badgeId);
+      if (existing) return false;
+      const now = new Date().toISOString();
+      await db.badges.put({ id: badgeId, unlockedAt: now });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   return {
     books,
     progressMap,
@@ -646,5 +725,11 @@ export const useLibraryStore = defineStore('library', () => {
     clearVocabulary,
     updateWordMastery,
     getReviewWords,
+    addHighlight,
+    getHighlights,
+    updateHighlight,
+    deleteHighlight,
+    getUnlockedBadges,
+    unlockBadge,
   };
 });

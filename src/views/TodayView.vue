@@ -1,5 +1,22 @@
 <template>
-  <div class="container py-4">
+  <div class="container py-4" :class="isFocusMode ? 'focus-mode-active' : ''">
+    <!-- Floating Exit Button for Focus Mode -->
+    <div
+      v-if="isFocusMode"
+      class="position-fixed top-0 end-0 p-3"
+      style="z-index: 1080"
+    >
+      <button
+        type="button"
+        class="btn btn-sm btn-dark opacity-75 shadow rounded-pill d-flex align-items-center gap-1 px-3 py-1"
+        title="Quitter le mode plein écran"
+        @click="toggleFocusMode"
+      >
+        <i class="bi bi-fullscreen-exit"></i>
+        <span>Quitter Focus</span>
+      </button>
+    </div>
+
     <!-- Empty state -->
     <div v-if="!book" class="text-center py-5">
       <i class="bi bi-journal-x fs-1 text-body-secondary d-block mb-3"></i>
@@ -12,9 +29,9 @@
       </RouterLink>
     </div>
 
-    <div v-else class="reading-surface">
-      <!-- Book Switcher & Header Info (UC04) -->
-      <div class="card shadow-sm border-0 mb-4">
+    <div v-else class="reading-surface" :class="'reading-surface-theme-' + settingsStore.readingTheme">
+      <!-- Book Switcher & Header Info (Hidden in Focus Mode) -->
+      <div v-if="!isFocusMode" class="card shadow-sm border-0 mb-4">
         <div class="card-body p-3 p-md-4">
           <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
             <div class="flex-grow-1">
@@ -63,8 +80,8 @@
         </div>
       </div>
 
-      <!-- Summary Card (UC04) -->
-      <div ref="summarySectionRef">
+      <!-- Summary Card (UC04) (Hidden in Focus Mode) -->
+      <div v-if="!isFocusMode" ref="summarySectionRef">
         <SummaryCard
           :summary="summaryText"
           :length="settingsStore.summaryLength"
@@ -74,83 +91,197 @@
         />
       </div>
 
-      <!-- Quick Reading Comfort Controls -->
-      <div class="card border-0 bg-body-tertiary mb-4">
+      <!-- Audio Reader Player Bar (Axe 1) -->
+      <div
+        v-if="showAudioPlayer"
+        class="card border-0 shadow-sm mb-4 bg-primary text-white overflow-hidden rounded-4 animate-fade-in"
+      >
+        <div class="card-body py-2 px-3 d-flex flex-wrap align-items-center justify-content-between gap-2">
+          <div class="d-flex align-items-center gap-2">
+            <button
+              type="button"
+              class="btn btn-sm btn-light rounded-circle p-2 lh-1 text-primary shadow-sm"
+              :title="audioState.isPlaying ? 'Mettre en pause' : 'Écouter'"
+              @click="toggleAudioPlay"
+            >
+              <i class="bi" :class="audioState.isPlaying ? 'bi-pause-fill fs-5' : 'bi-play-fill fs-5'"></i>
+            </button>
+
+            <button
+              type="button"
+              class="btn btn-sm btn-outline-light rounded-circle p-1 lh-1"
+              title="Phrase précédente"
+              @click="globalAudioReader.prev()"
+            >
+              <i class="bi bi-chevron-left"></i>
+            </button>
+
+            <button
+              type="button"
+              class="btn btn-sm btn-outline-light rounded-circle p-1 lh-1"
+              title="Phrase suivante"
+              @click="globalAudioReader.next()"
+            >
+              <i class="bi bi-chevron-right"></i>
+            </button>
+
+            <div class="small ms-1 d-flex flex-column">
+              <span class="fw-semibold">Livre Audio (TTS)</span>
+              <span class="opacity-75" style="font-size: 0.75rem">
+                Phrase {{ audioState.currentIndex + 1 }} / {{ audioState.totalSentences }}
+              </span>
+            </div>
+          </div>
+
+          <div class="d-flex align-items-center gap-2">
+            <!-- Playback Speed -->
+            <button
+              type="button"
+              class="btn btn-sm btn-outline-light rounded-pill px-2 py-0"
+              style="font-size: 0.8rem"
+              title="Vitesse de lecture"
+              @click="cycleAudioRate"
+            >
+              {{ audioState.rate }}x
+            </button>
+
+            <button
+              type="button"
+              class="btn btn-sm btn-link text-white text-decoration-none p-0 ms-2 opacity-75"
+              title="Fermer le lecteur audio"
+              @click="closeAudioPlayer"
+            >
+              <i class="bi bi-x-lg"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Reading Comfort Controls (Axe 1 & 2) -->
+      <div v-if="!isFocusMode" class="card border-0 bg-body-tertiary mb-4">
         <div class="card-body py-2 px-3 d-flex flex-wrap align-items-center justify-content-between gap-2 small">
-          <div class="d-flex align-items-center gap-2">
-            <label class="text-body-secondary mb-0">Police :</label>
-            <select
-              v-model="settingsStore.fontFamily"
-              class="form-select form-select-sm w-auto"
-            >
-              <option value="Georgia">Georgia</option>
-              <option value="Merriweather">Merriweather</option>
-              <option value="Open Sans">Open Sans</option>
-              <option value="Arial">Arial</option>
-            </select>
+          <!-- Typo & Sizes -->
+          <div class="d-flex flex-wrap align-items-center gap-2">
+            <div class="d-flex align-items-center gap-1">
+              <label class="text-body-secondary mb-0">Police :</label>
+              <select
+                v-model="settingsStore.fontFamily"
+                class="form-select form-select-sm w-auto"
+              >
+                <option value="Georgia">Georgia</option>
+                <option value="Merriweather">Merriweather</option>
+                <option value="Open Sans">Open Sans</option>
+                <option value="Arial">Arial</option>
+              </select>
+            </div>
+
+            <div class="d-flex align-items-center gap-1">
+              <button
+                type="button"
+                class="btn btn-sm btn-outline-secondary px-2 py-0"
+                :disabled="settingsStore.fontSize <= 12"
+                @click="settingsStore.fontSize = Math.max(12, settingsStore.fontSize - 1)"
+              >
+                A-
+              </button>
+              <span class="fw-semibold">{{ settingsStore.fontSize }}px</span>
+              <button
+                type="button"
+                class="btn btn-sm btn-outline-secondary px-2 py-0"
+                :disabled="settingsStore.fontSize >= 32"
+                @click="settingsStore.fontSize = Math.min(32, settingsStore.fontSize + 1)"
+              >
+                A+
+              </button>
+            </div>
+
+            <!-- Reading Themes (Axe 2) -->
+            <div class="d-flex align-items-center gap-1 ms-sm-2">
+              <label class="text-body-secondary mb-0">Thème :</label>
+              <select
+                v-model="settingsStore.readingTheme"
+                class="form-select form-select-sm w-auto fw-semibold"
+              >
+                <option value="default">Défaut</option>
+                <option value="sepia">Sépia (Chaud)</option>
+                <option value="ivory">Ivoire (Doux)</option>
+                <option value="oled">Noir OLED</option>
+              </select>
+            </div>
           </div>
 
-          <div class="d-flex align-items-center gap-2">
-            <span class="text-body-secondary">Taille :</span>
+          <!-- Feature Action Buttons -->
+          <div class="d-flex flex-wrap align-items-center gap-2">
+            <!-- Audio toggle (Axe 1) -->
             <button
               type="button"
-              class="btn btn-sm btn-outline-secondary px-2 py-0"
-              :disabled="settingsStore.fontSize <= 12"
-              @click="settingsStore.fontSize = Math.max(12, settingsStore.fontSize - 1)"
+              class="btn btn-sm"
+              :class="showAudioPlayer ? 'btn-primary' : 'btn-outline-primary'"
+              title="Écouter le segment en synthèse vocale"
+              @click="toggleAudioBar"
             >
-              A-
+              <i class="bi bi-headphones me-1"></i>
+              <span>Écouter</span>
             </button>
-            <span class="fw-semibold">{{ settingsStore.fontSize }}px</span>
+
+            <!-- Table of contents & Search (Axe 4) -->
             <button
               type="button"
-              class="btn btn-sm btn-outline-secondary px-2 py-0"
-              :disabled="settingsStore.fontSize >= 32"
-              @click="settingsStore.fontSize = Math.min(32, settingsStore.fontSize + 1)"
+              class="btn btn-sm btn-outline-secondary"
+              title="Table des matières et recherche dans le livre"
+              @click="showTocDrawer = true"
             >
-              A+
+              <i class="bi bi-list-columns-reverse me-1"></i>
+              <span>Chapitres</span>
             </button>
-          </div>
 
-          <div class="d-flex align-items-center gap-2">
-            <label class="text-body-secondary mb-0">Interligne :</label>
-            <select
-              v-model.number="settingsStore.lineHeight"
-              class="form-select form-select-sm w-auto"
+            <!-- Mode pagination vs scroll (Axe 2) -->
+            <button
+              type="button"
+              class="btn btn-sm"
+              :class="settingsStore.readingMode === 'paginated' ? 'btn-primary' : 'btn-outline-secondary'"
+              :title="settingsStore.readingMode === 'paginated' ? 'Passer en défilement vertical' : 'Passer en mode pages horizontales'"
+              @click="toggleReadingMode"
             >
-              <option :value="1.2">1.2</option>
-              <option :value="1.5">1.5</option>
-              <option :value="1.7">1.7</option>
-              <option :value="2.0">2.0</option>
-              <option :value="2.3">2.3</option>
-            </select>
-          </div>
+              <i class="bi" :class="settingsStore.readingMode === 'paginated' ? 'bi-book-half' : 'bi-card-text'"></i>
+              <span class="d-none d-sm-inline ms-1">{{ settingsStore.readingMode === 'paginated' ? 'Pages' : 'Scroll' }}</span>
+            </button>
 
-          <div class="d-flex align-items-center gap-2">
+            <!-- Focus / Fullscreen Mode (Axe 2) -->
+            <button
+              type="button"
+              class="btn btn-sm btn-outline-secondary"
+              title="Mode lecture plein écran sans distraction"
+              @click="toggleFocusMode"
+            >
+              <i class="bi bi-arrows-fullscreen"></i>
+            </button>
+
+            <!-- Highlight Vocab toggle -->
             <button
               type="button"
               class="btn btn-sm"
               :class="settingsStore.highlightVocabularyWords ? 'btn-primary' : 'btn-outline-secondary'"
-              title="Surligner les mots du carnet de vocabulaire dans le texte"
+              title="Surligner les mots du carnet de vocabulaire"
               @click="settingsStore.highlightVocabularyWords = !settingsStore.highlightVocabularyWords"
             >
-              <i class="bi bi-highlighter me-1"></i>
-              <span>Surligner ({{ vocabList.length }})</span>
+              <i class="bi bi-highlighter"></i>
             </button>
 
+            <!-- Vocabulary link -->
             <RouterLink
               :to="`/vocabulary?bookId=${book.id}`"
               class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1"
               title="Consulter le carnet de vocabulaire pour ce livre"
             >
               <i class="bi bi-journal-bookmark"></i>
-              <span>Vocabulaire</span>
             </RouterLink>
           </div>
         </div>
       </div>
 
       <!-- Daily Vocabulary Review Widget (Point 1) -->
-      <div v-if="reviewWords.length > 0" class="card shadow-sm border-0 mb-4 border-start border-4 border-primary">
+      <div v-if="!isFocusMode && reviewWords.length > 0" class="card shadow-sm border-0 mb-4 border-start border-4 border-primary">
         <div class="card-body p-3">
           <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
             <h6 class="fw-bold mb-0 d-flex align-items-center gap-2 text-primary">
@@ -182,7 +313,11 @@
       </div>
 
       <!-- Segment Content -->
-      <div class="card shadow-sm border-0 mb-4">
+      <div
+        class="card shadow-sm border-0 mb-4 position-relative"
+        @touchstart="handleTouchStart"
+        @touchend="handleTouchEnd"
+      >
         <div class="card-body p-3 p-sm-4 p-md-5">
           <div v-if="segmentLoading" class="text-center py-5 text-body-secondary">
             <div class="spinner-border mb-2" role="status"></div>
@@ -192,19 +327,65 @@
           <div v-else-if="currentSegment">
             <div class="d-flex justify-content-between align-items-center text-body-secondary small mb-4 pb-2 border-bottom">
               <span>Lecture du jour {{ currentSegment.dayNumber }}</span>
+              <span v-if="settingsStore.readingMode === 'paginated'">
+                Page {{ currentPageIdx + 1 }} / {{ paginatedPages.length }}
+              </span>
               <span>{{ currentSegment.wordCount }} mots</span>
             </div>
 
+            <!-- Reading Prose Surface -->
             <div
               class="reading-prose"
               :style="readingStyle"
               @click="handleReadingProseClick"
             >
-              <p
-                v-for="(para, idx) in paragraphs"
-                :key="idx"
-                v-html="renderParagraph(para)"
-              ></p>
+              <!-- Paginated mode display -->
+              <template v-if="settingsStore.readingMode === 'paginated'">
+                <div v-if="paginatedPages[currentPageIdx]">
+                  <p
+                    v-for="(pIdx) in paginatedPages[currentPageIdx]"
+                    :key="pIdx"
+                    :data-pidx="pIdx"
+                    v-html="renderParagraph(paragraphs[pIdx], pIdx)"
+                  ></p>
+                </div>
+              </template>
+
+              <!-- Standard vertical scroll display -->
+              <template v-else>
+                <p
+                  v-for="(para, idx) in paragraphs"
+                  :key="idx"
+                  :data-pidx="idx"
+                  v-html="renderParagraph(para, idx)"
+                ></p>
+              </template>
+            </div>
+
+            <!-- Pagination Bottom Nav Controls (Axe 2) -->
+            <div
+              v-if="settingsStore.readingMode === 'paginated'"
+              class="d-flex justify-content-between align-items-center pt-4 mt-4 border-top"
+            >
+              <button
+                type="button"
+                class="btn btn-outline-secondary btn-sm rounded-pill px-3"
+                :disabled="currentPageIdx === 0"
+                @click="currentPageIdx--"
+              >
+                <i class="bi bi-arrow-left me-1"></i>Page précédente
+              </button>
+              <span class="small text-body-secondary">
+                {{ currentPageIdx + 1 }} / {{ paginatedPages.length }}
+              </span>
+              <button
+                type="button"
+                class="btn btn-outline-secondary btn-sm rounded-pill px-3"
+                :disabled="currentPageIdx >= paginatedPages.length - 1"
+                @click="currentPageIdx++"
+              >
+                Page suivante<i class="bi bi-arrow-right ms-1"></i>
+              </button>
             </div>
           </div>
 
@@ -214,18 +395,35 @@
         </div>
       </div>
 
-      <!-- Completion Banner -->
+      <!-- Completion Banner & Badges unlocked alert -->
       <div
         v-if="justCompletedMsg"
-        class="alert alert-success d-flex align-items-center justify-content-between mb-4"
+        class="alert alert-success d-flex align-items-center justify-content-between mb-4 shadow-sm rounded-3"
       >
         <div>
-          <i class="bi bi-check-circle-fill me-2"></i>{{ justCompletedMsg }}
+          <i class="bi bi-check-circle-fill me-2 fs-5"></i>
+          <span>{{ justCompletedMsg }}</span>
         </div>
       </div>
 
+      <div
+        v-if="unlockedBadgeMsg"
+        class="alert alert-warning d-flex align-items-center justify-content-between mb-4 shadow-sm rounded-3 border-warning"
+      >
+        <div class="d-flex align-items-center gap-2">
+          <i class="bi bi-trophy-fill text-warning fs-4"></i>
+          <div>
+            <div class="fw-bold">Nouveau succès débloqué !</div>
+            <div class="small">{{ unlockedBadgeMsg }}</div>
+          </div>
+        </div>
+        <RouterLink to="/stats" class="btn btn-sm btn-outline-dark rounded-pill">
+          Voir mes trophées
+        </RouterLink>
+      </div>
+
       <!-- Action Buttons (UC04: Terminé, Reporter, Relire le résumé) -->
-      <div class="card shadow-sm border-0 mb-4">
+      <div v-if="!isFocusMode" class="card shadow-sm border-0 mb-4">
         <div class="card-body p-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
           <div class="d-flex flex-wrap gap-2">
             <button
@@ -266,6 +464,9 @@
             >
               <i class="bi bi-chevron-left"></i>
             </button>
+            <span class="btn btn-outline-secondary disabled fw-semibold">
+              Jour {{ displayedDay }}
+            </span>
             <button
               type="button"
               class="btn btn-outline-secondary"
@@ -279,6 +480,164 @@
         </div>
       </div>
     </div>
+
+    <!-- Free Highlight & Quote Floating Action Trigger (Axe 3) -->
+    <div
+      v-if="highlightTrigger.visible"
+      class="position-fixed shadow-lg rounded-pill p-1 bg-body border d-flex align-items-center gap-1 animate-fade-in"
+      :style="{
+        top: `${highlightTrigger.top}px`,
+        left: `${highlightTrigger.left}px`,
+        transform: 'translate(-50%, 0)',
+        zIndex: 1060,
+      }"
+      @mousedown.prevent
+      @touchstart.prevent
+    >
+      <!-- Color dots for highlights -->
+      <button
+        v-for="c in highlightColors"
+        :key="c.name"
+        type="button"
+        class="btn p-0 rounded-circle border shadow-sm"
+        :style="{ width: '22px', height: '22px', backgroundColor: c.code }"
+        :title="`Surligner en ${c.label}`"
+        @click="createHighlight(c.name)"
+      ></button>
+
+      <div class="vr mx-1 my-1"></div>
+
+      <!-- Quote generator trigger -->
+      <button
+        type="button"
+        class="btn btn-sm btn-light border-0 rounded-pill py-0 px-2 small d-inline-flex align-items-center gap-1"
+        title="Créer une image de citation"
+        @click="openQuoteModal(highlightTrigger.text)"
+      >
+        <i class="bi bi-card-image text-primary"></i>
+        <span>Citation</span>
+      </button>
+
+      <button
+        type="button"
+        class="btn btn-sm btn-link text-body-secondary p-0 px-1"
+        title="Fermer"
+        @click="highlightTrigger.visible = false"
+      >
+        <i class="bi bi-x"></i>
+      </button>
+    </div>
+
+    <!-- Table of Contents & Search Offcanvas / Drawer (Axe 4) -->
+    <div
+      v-if="showTocDrawer"
+      class="modal-backdrop fade show"
+      style="z-index: 1075"
+      @click="showTocDrawer = false"
+    ></div>
+
+    <div
+      class="offcanvas offcanvas-start show"
+      :class="{ show: showTocDrawer }"
+      tabindex="-1"
+      style="z-index: 1080; visibility: visible;"
+      v-if="showTocDrawer"
+    >
+      <div class="offcanvas-header border-bottom">
+        <h5 class="offcanvas-title fw-bold d-flex align-items-center gap-2">
+          <i class="bi bi-book-half text-primary"></i>
+          <span>Structure du livre</span>
+        </h5>
+        <button type="button" class="btn-close" aria-label="Fermer" @click="showTocDrawer = false"></button>
+      </div>
+
+      <div class="offcanvas-body p-3">
+        <!-- Search bar across book -->
+        <div class="mb-3">
+          <div class="input-group input-group-sm">
+            <span class="input-group-text"><i class="bi bi-search"></i></span>
+            <input
+              v-model="searchBookQuery"
+              type="text"
+              class="form-control"
+              placeholder="Rechercher dans tout le livre…"
+              @keyup.enter="performBookSearch"
+            />
+            <button class="btn btn-primary" type="button" @click="performBookSearch">
+              Chercher
+            </button>
+          </div>
+        </div>
+
+        <!-- Search Results (if query) -->
+        <div v-if="searchActive" class="mb-4">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <span class="small fw-bold">Résultats ({{ searchResults.length }}) :</span>
+            <button type="button" class="btn btn-link btn-sm p-0 small" @click="clearBookSearch">
+              Effacer
+            </button>
+          </div>
+
+          <div v-if="searchResults.length === 0" class="text-body-secondary small py-2">
+            Aucun résultat trouvé pour « {{ searchBookQuery }} ».
+          </div>
+
+          <div class="list-group list-group-flush small">
+            <button
+              v-for="(res, rIdx) in searchResults"
+              :key="rIdx"
+              type="button"
+              class="list-group-item list-group-item-action text-start p-2"
+              @click="jumpToSearchResult(res.dayNumber)"
+            >
+              <div class="fw-bold text-primary mb-1">Jour {{ res.dayNumber }}</div>
+              <div class="text-body-secondary fst-italic">« ...{{ res.snippet }}... »</div>
+            </button>
+          </div>
+        </div>
+
+        <!-- Table of Contents Chapters -->
+        <div>
+          <h6 class="fw-bold text-uppercase small text-body-secondary mb-2">
+            Chapitres & Segments
+          </h6>
+
+          <div class="list-group list-group-flush small">
+            <button
+              v-for="day in (book?.totalSegments || 1)"
+              :key="day"
+              type="button"
+              class="list-group-item list-group-item-action d-flex align-items-center justify-content-between p-2 rounded-2 mb-1"
+              :class="{
+                'active text-white': day === displayedDay,
+                'list-group-item-light': day !== displayedDay && progress?.completedSegments?.includes(day),
+              }"
+              @click="selectDayFromToc(day)"
+            >
+              <div class="d-flex align-items-center gap-2">
+                <i
+                  class="bi"
+                  :class="progress?.completedSegments?.includes(day) ? 'bi-check-circle-fill text-success' : 'bi-circle text-body-tertiary'"
+                ></i>
+                <span class="fw-semibold">Jour {{ day }}</span>
+              </div>
+              <span class="badge" :class="day === displayedDay ? 'bg-light text-primary' : 'bg-secondary-subtle text-secondary'">
+                {{ day === displayedDay ? 'En cours' : (progress?.completedSegments?.includes(day) ? 'Lu' : '') }}
+              </span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quote Card Generator Modal (Axe 3) -->
+    <QuoteCardModal
+      :show="showQuoteModal"
+      :quote-text="selectedQuoteText"
+      :book-title="book?.title"
+      :author="book?.author"
+      @close="showQuoteModal = false"
+    />
   </div>
 </template>
 
@@ -293,7 +652,10 @@ import {
   extractSentenceFromText,
   cleanSelectedWord,
 } from '@/services/dictionaryService.js';
+import { globalAudioReader } from '@/services/audioReaderService.js';
+import { evaluateBadges } from '@/services/badgeService.js';
 import SummaryCard from '@/components/SummaryCard.vue';
+import QuoteCardModal from '@/components/QuoteCardModal.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -307,61 +669,93 @@ const summaryText = ref('');
 const summaryLoading = ref(false);
 const displayedDay = ref(1);
 const justCompletedMsg = ref('');
+const unlockedBadgeMsg = ref('');
 const vocabList = ref([]);
 const reviewWords = ref([]);
+const userHighlights = ref([]);
+
+// Fullscreen / Focus Mode (Axe 2)
+const isFocusMode = ref(false);
+
+// Mode Pagination (Axe 2)
+const currentPageIdx = ref(0);
+
+// Audio Reader State (Axe 1)
+const showAudioPlayer = ref(false);
+const audioState = ref({
+  isPlaying: false,
+  isPaused: false,
+  currentIndex: -1,
+  totalSentences: 0,
+  rate: 1.0,
+});
+const activeAudioSentence = ref(null);
+
+// TOC Drawer & Search (Axe 4)
+const showTocDrawer = ref(false);
+const searchBookQuery = ref('');
+const searchActive = ref(false);
+const searchResults = ref([]);
+
+// Highlights & Quote modal (Axe 3)
+const showQuoteModal = ref(false);
+const selectedQuoteText = ref('');
+const highlightTrigger = ref({
+  visible: false,
+  text: '',
+  top: 0,
+  left: 0,
+});
+
+const highlightColors = [
+  { name: 'yellow', code: '#fef08a', label: 'Jaune' },
+  { name: 'green', code: '#bbf7d0', label: 'Menthe' },
+  { name: 'pink', code: '#fbcfe8', label: 'Rose' },
+  { name: 'blue', code: '#bae6fd', label: 'Ciel' },
+];
+
+// Touch swipe tracking for Paginated mode
+let touchStartX = 0;
+let touchStartY = 0;
 
 const knownWords = computed(() => {
   return new Set(vocabList.value.map((w) => w.word.toLowerCase()));
 });
 
-async function loadVocab() {
-  if (!book.value) return;
-  try {
-    vocabList.value = await libraryStore.getVocabulary(book.value.id);
-    reviewWords.value = await libraryStore.getReviewWords(book.value.id, 5);
-  } catch {
-    // Ignore db load error
-  }
-}
+const paragraphs = computed(() => {
+  if (!currentSegment.value?.content) return [];
+  return currentSegment.value.content
+    .split(/\n{2,}/)
+    .map((p) => p.trim())
+    .filter(Boolean);
+});
 
-function escapeHtml(str) {
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
-}
+// Group paragraphs into pages for paginated mode (e.g. 1-2 paragraphs per page)
+const paginatedPages = computed(() => {
+  const pages = [];
+  let currentGroup = [];
+  let currentWords = 0;
 
-function renderParagraph(para) {
-  if (!settingsStore.highlightVocabularyWords || knownWords.value.size === 0) {
-    return escapeHtml(para);
-  }
-
-  // Tokenize words and non-words
-  const tokens = para.split(/(\b[a-zA-ZÀ-ÿœæÇç-]+\b)/);
-  return tokens
-    .map((token) => {
-      const cleaned = cleanSelectedWord(token).toLowerCase();
-      if (cleaned && knownWords.value.has(cleaned)) {
-        return `<mark class="vocab-highlight" data-word="${escapeHtml(token)}" title="Mot déjà consulté : cliquer pour revoir sa définition">${escapeHtml(token)}</mark>`;
-      }
-      return escapeHtml(token);
-    })
-    .join('');
-}
-
-function handleReadingProseClick(e) {
-  const mark = e.target.closest('.vocab-highlight');
-  if (mark) {
-    const word = mark.getAttribute('data-word');
-    if (word) {
-      const paraText = mark.closest('p')?.textContent || '';
-      const context = extractSentenceFromText(paraText, word);
-      triggerWordLookup(word, context);
+  paragraphs.value.forEach((p, idx) => {
+    const words = p.split(/\s+/).length;
+    if (currentWords + words > 220 && currentGroup.length > 0) {
+      pages.push(currentGroup);
+      currentGroup = [idx];
+      currentWords = words;
+    } else {
+      currentGroup.push(idx);
+      currentWords += words;
     }
-  }
-}
+  });
+  if (currentGroup.length > 0) pages.push(currentGroup);
+  return pages.length > 0 ? pages : [[]];
+});
+
+const readingStyle = computed(() => ({
+  fontFamily: `'${settingsStore.fontFamily}', serif`,
+  fontSize: `${settingsStore.fontSize}px`,
+  lineHeight: settingsStore.lineHeight,
+}));
 
 const book = computed(() => {
   const paramId = route.params.bookId;
@@ -391,29 +785,255 @@ const estimatedMinutes = computed(() =>
     : 0
 );
 
-const paragraphs = computed(() => {
-  if (!currentSegment.value?.content) return [];
-  return currentSegment.value.content
-    .split(/\n{2,}/)
-    .map((p) => p.trim())
-    .filter(Boolean);
-});
+// Focus mode toggle
+function toggleFocusMode() {
+  isFocusMode.value = !isFocusMode.value;
+  if (typeof document !== 'undefined') {
+    document.body.classList.toggle('reading-focus-mode', isFocusMode.value);
+  }
+}
 
-const readingStyle = computed(() => ({
-  fontFamily: `'${settingsStore.fontFamily}', serif`,
-  fontSize: `${settingsStore.fontSize}px`,
-  lineHeight: settingsStore.lineHeight,
-}));
+// Pagination mode toggle
+function toggleReadingMode() {
+  settingsStore.readingMode = settingsStore.readingMode === 'paginated' ? 'scroll' : 'paginated';
+  currentPageIdx.value = 0;
+}
+
+// Touch swipe navigation
+function handleTouchStart(e) {
+  if (settingsStore.readingMode !== 'paginated') return;
+  const touch = e.touches[0];
+  touchStartX = touch.clientX;
+  touchStartY = touch.clientY;
+}
+
+function handleTouchEnd(e) {
+  if (settingsStore.readingMode !== 'paginated') return;
+  const touch = e.changedTouches[0];
+  const deltaX = touch.clientX - touchStartX;
+  const deltaY = touch.clientY - touchStartY;
+
+  // Horizontal swipe detected
+  if (Math.abs(deltaX) > 60 && Math.abs(deltaY) < 50) {
+    if (deltaX < 0 && currentPageIdx.value < paginatedPages.value.length - 1) {
+      currentPageIdx.value++;
+    } else if (deltaX > 0 && currentPageIdx.value > 0) {
+      currentPageIdx.value--;
+    }
+  }
+}
+
+// Audio Reader functions (Axe 1)
+function toggleAudioBar() {
+  showAudioPlayer.value = !showAudioPlayer.value;
+  if (showAudioPlayer.value) {
+    setupAudioReader();
+  } else {
+    globalAudioReader.stop();
+  }
+}
+
+function setupAudioReader() {
+  if (paragraphs.value.length > 0) {
+    globalAudioReader.loadContent(paragraphs.value, 'fr-FR');
+    globalAudioReader.setRate(audioState.value.rate);
+  }
+}
+
+function toggleAudioPlay() {
+  if (audioState.value.isPlaying) {
+    globalAudioReader.pause();
+  } else {
+    globalAudioReader.play();
+  }
+}
+
+function closeAudioPlayer() {
+  globalAudioReader.stop();
+  showAudioPlayer.value = false;
+}
+
+function cycleAudioRate() {
+  const rates = [0.8, 1.0, 1.25, 1.5, 2.0];
+  const next = rates[(rates.indexOf(audioState.value.rate) + 1) % rates.length];
+  globalAudioReader.setRate(next);
+}
+
+// Highlights & Quote functions (Axe 3)
+async function loadHighlights() {
+  if (!book.value) return;
+  userHighlights.value = await libraryStore.getHighlights(book.value.id);
+}
+
+function openQuoteModal(text) {
+  selectedQuoteText.value = text;
+  highlightTrigger.value.visible = false;
+  showQuoteModal.value = true;
+}
+
+async function createHighlight(colorName) {
+  const text = highlightTrigger.value.text;
+  if (!text || !book.value) return;
+
+  await libraryStore.addHighlight({
+    bookId: book.value.id,
+    dayNumber: displayedDay.value,
+    text,
+    color: colorName,
+  });
+
+  highlightTrigger.value.visible = false;
+  await loadHighlights();
+}
+
+function onTextSelectionChange() {
+  const selection = window.getSelection();
+  if (!selection || selection.isCollapsed || !selection.toString().trim()) {
+    highlightTrigger.value.visible = false;
+    return;
+  }
+
+  const raw = selection.toString().trim();
+  // If user selected a sentence or phrase (> 15 chars), show highlight & quote trigger
+  if (raw.length >= 12 && raw.length <= 500) {
+    const range = selection.getRangeAt(0);
+    const rect = range.getBoundingClientRect();
+    if (rect.width > 0) {
+      highlightTrigger.value = {
+        visible: true,
+        text: raw,
+        top: Math.min(rect.bottom + 10, window.innerHeight - 60),
+        left: Math.min(Math.max(rect.left + rect.width / 2, 120), window.innerWidth - 120),
+      };
+    }
+  }
+}
+
+// Table of Contents & Search (Axe 4)
+function selectDayFromToc(day) {
+  showTocDrawer.value = false;
+  viewDay(day);
+}
+
+async function performBookSearch() {
+  const q = searchBookQuery.value.trim().toLowerCase();
+  if (!q || !book.value) return;
+
+  searchActive.value = true;
+  searchResults.value = [];
+
+  const segments = await libraryStore.getBookSegments(book.value.id);
+  const hits = [];
+
+  segments.forEach((seg) => {
+    const text = seg.content || '';
+    const idx = text.toLowerCase().indexOf(q);
+    if (idx !== -1) {
+      const start = Math.max(0, idx - 40);
+      const end = Math.min(text.length, idx + q.length + 40);
+      hits.push({
+        dayNumber: seg.dayNumber,
+        snippet: text.slice(start, end).replace(/\s+/g, ' ').trim(),
+      });
+    }
+  });
+
+  searchResults.value = hits.slice(0, 15);
+}
+
+function clearBookSearch() {
+  searchBookQuery.value = '';
+  searchActive.value = false;
+  searchResults.value = [];
+}
+
+function jumpToSearchResult(day) {
+  showTocDrawer.value = false;
+  viewDay(day);
+}
+
+async function loadVocab() {
+  if (!book.value) return;
+  try {
+    vocabList.value = await libraryStore.getVocabulary(book.value.id);
+    reviewWords.value = await libraryStore.getReviewWords(book.value.id, 5);
+    await loadHighlights();
+  } catch {
+    // Ignore db load error
+  }
+}
+
+function escapeHtml(str) {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function renderParagraph(para, pIdx) {
+  let content = escapeHtml(para);
+
+  // Check TTS active sentence highlight (Axe 1)
+  if (
+    activeAudioSentence.value &&
+    activeAudioSentence.value.pIdx === pIdx &&
+    activeAudioSentence.value.text
+  ) {
+    const cleanS = escapeHtml(activeAudioSentence.value.text);
+    if (content.includes(cleanS)) {
+      content = content.replace(
+        cleanS,
+        `<span class="tts-active-sentence">${cleanS}</span>`
+      );
+    }
+  }
+
+  // Vocab highlight
+  if (settingsStore.highlightVocabularyWords && knownWords.value.size > 0) {
+    const tokens = content.split(/(\b[a-zA-ZÀ-ÿœæÇç-]+\b)/);
+    content = tokens
+      .map((token) => {
+        const cleaned = cleanSelectedWord(token).toLowerCase();
+        if (cleaned && knownWords.value.has(cleaned)) {
+          return `<mark class="vocab-highlight" data-word="${token}" title="Mot déjà consulté : cliquer pour revoir sa définition">${token}</mark>`;
+        }
+        return token;
+      })
+      .join('');
+  }
+
+  return content;
+}
+
+function handleReadingProseClick(e) {
+  const mark = e.target.closest('.vocab-highlight');
+  if (mark) {
+    const word = mark.getAttribute('data-word');
+    if (word) {
+      const paraText = mark.closest('p')?.textContent || '';
+      const context = extractSentenceFromText(paraText, word);
+      triggerWordLookup(word, context);
+    }
+  }
+}
 
 async function loadSegmentAndSummary(dayNum) {
   if (!book.value) return;
   segmentLoading.value = true;
   try {
     currentSegment.value = await libraryStore.getSegment(book.value.id, dayNum);
+    currentPageIdx.value = 0;
   } finally {
     segmentLoading.value = false;
   }
   await loadSummary(false);
+
+  // If audio player is open, refresh sentences
+  if (showAudioPlayer.value) {
+    setupAudioReader();
+  }
 }
 
 async function loadSummary(force = false) {
@@ -439,6 +1059,7 @@ watch(
     const prog = libraryStore.getProgress(bookId);
     displayedDay.value = prog.currentSegment || 1;
     justCompletedMsg.value = '';
+    unlockedBadgeMsg.value = '';
     await loadSegmentAndSummary(displayedDay.value);
     await loadVocab();
   },
@@ -447,10 +1068,32 @@ watch(
 
 onMounted(() => {
   window.addEventListener('focus', loadVocab);
+  document.addEventListener('selectionchange', onTextSelectionChange);
+
+  // Audio reader listeners
+  globalAudioReader.onStateChange = (state) => {
+    audioState.value = state;
+  };
+  globalAudioReader.onSentenceChange = (sentence) => {
+    activeAudioSentence.value = sentence;
+    if (sentence) {
+      setTimeout(() => {
+        document.querySelector('.tts-active-sentence')?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center',
+        });
+      }, 50);
+    }
+  };
 });
 
 onUnmounted(() => {
   window.removeEventListener('focus', loadVocab);
+  document.removeEventListener('selectionchange', onTextSelectionChange);
+  globalAudioReader.stop();
+  if (typeof document !== 'undefined') {
+    document.body.classList.remove('reading-focus-mode');
+  }
 });
 
 function switchBook(bookId) {
@@ -464,6 +1107,7 @@ async function viewDay(dayNum) {
   const target = Math.min(maxAllowed, Math.max(1, dayNum));
   displayedDay.value = target;
   justCompletedMsg.value = '';
+  unlockedBadgeMsg.value = '';
   await loadSegmentAndSummary(target);
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
@@ -472,6 +1116,12 @@ async function handleComplete() {
   if (!book.value || !currentSegment.value) return;
   const dayJustRead = displayedDay.value;
   await libraryStore.markSegmentCompleted(book.value.id, dayJustRead);
+
+  // Check and unlock gamification badges (Axe 5)
+  const newBadges = await evaluateBadges(libraryStore);
+  if (newBadges && newBadges.length > 0) {
+    unlockedBadgeMsg.value = `« ${newBadges[0].title} » — ${newBadges[0].description}`;
+  }
 
   if (dayJustRead >= book.value.totalSegments) {
     justCompletedMsg.value = `Félicitations ! Vous avez terminé « ${book.value.title} » !`;
@@ -511,5 +1161,11 @@ function scrollToSummary() {
 
 .reading-prose :deep(.vocab-highlight:hover) {
   background-color: rgba(var(--bs-primary-rgb), 0.28);
+}
+
+.reading-surface {
+  transition: background-color 0.2s ease, color 0.2s ease;
+  border-radius: 12px;
+  padding: 8px;
 }
 </style>

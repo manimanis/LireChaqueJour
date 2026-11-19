@@ -21,6 +21,8 @@ const DEFAULT_SETTINGS = {
   dictionaryAutoOpen: false,
   highlightVocabularyWords: true,
   speechSynthesisEnabled: true,
+  readingTheme: 'default', // 'default' | 'sepia' | 'ivory' | 'oled'
+  readingMode: 'scroll', // 'scroll' | 'paginated'
 };
 
 function loadSavedSettings() {
@@ -53,6 +55,8 @@ export const useSettingsStore = defineStore('settings', () => {
   const dictionaryAutoOpen = ref(initial.dictionaryAutoOpen ?? DEFAULT_SETTINGS.dictionaryAutoOpen);
   const highlightVocabularyWords = ref(initial.highlightVocabularyWords ?? DEFAULT_SETTINGS.highlightVocabularyWords);
   const speechSynthesisEnabled = ref(initial.speechSynthesisEnabled ?? DEFAULT_SETTINGS.speechSynthesisEnabled);
+  const readingTheme = ref(initial.readingTheme ?? DEFAULT_SETTINGS.readingTheme);
+  const readingMode = ref(initial.readingMode ?? DEFAULT_SETTINGS.readingMode);
 
   const persist = () => {
     try {
@@ -76,6 +80,8 @@ export const useSettingsStore = defineStore('settings', () => {
           dictionaryAutoOpen: dictionaryAutoOpen.value,
           highlightVocabularyWords: highlightVocabularyWords.value,
           speechSynthesisEnabled: speechSynthesisEnabled.value,
+          readingTheme: readingTheme.value,
+          readingMode: readingMode.value,
         })
       );
     } catch {
@@ -114,6 +120,8 @@ export const useSettingsStore = defineStore('settings', () => {
       dictionaryAutoOpen,
       highlightVocabularyWords,
       speechSynthesisEnabled,
+      readingTheme,
+      readingMode,
     ],
     () => {
       persist();
@@ -148,6 +156,8 @@ export const useSettingsStore = defineStore('settings', () => {
     dictionaryAutoOpen.value = DEFAULT_SETTINGS.dictionaryAutoOpen;
     highlightVocabularyWords.value = DEFAULT_SETTINGS.highlightVocabularyWords;
     speechSynthesisEnabled.value = DEFAULT_SETTINGS.speechSynthesisEnabled;
+    readingTheme.value = DEFAULT_SETTINGS.readingTheme;
+    readingMode.value = DEFAULT_SETTINGS.readingMode;
   }
 
   return {
@@ -168,6 +178,8 @@ export const useSettingsStore = defineStore('settings', () => {
     dictionaryAutoOpen,
     highlightVocabularyWords,
     speechSynthesisEnabled,
+    readingTheme,
+    readingMode,
     applyTheme,
     resetToDefaults,
   };

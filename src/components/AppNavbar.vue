@@ -1,5 +1,5 @@
 <template>
-  <nav class="navbar navbar-expand-md border-bottom sticky-top bg-body-tertiary">
+  <nav class="navbar navbar-expand-md border-bottom sticky-top bg-body-tertiary app-navbar-wrapper">
     <div class="container">
       <RouterLink class="navbar-brand d-flex align-items-center gap-2 fw-bold" to="/">
         <img

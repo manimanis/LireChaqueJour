@@ -105,3 +105,68 @@ body {
   border-color: var(--bs-primary);
   background-color: rgba(13, 110, 253, 0.06);
 }
+
+/* ==========================================================================
+   Reading Themes (Sepia, Ivory, OLED)
+   ========================================================================== */
+.reading-surface-theme-sepia {
+  background-color: #f7f0e1 !important;
+  color: #3b2f1f !important;
+}
+
+.reading-surface-theme-sepia .card {
+  background-color: #f0e6d2 !important;
+  color: #3b2f1f !important;
+  border-color: #e2d4be !important;
+}
+
+.reading-surface-theme-sepia .reading-prose {
+  color: #2e2417 !important;
+}
+
+.reading-surface-theme-ivory {
+  background-color: #faf8f5 !important;
+  color: #2b2724 !important;
+}
+
+.reading-surface-theme-ivory .card {
+  background-color: #f3efe8 !important;
+  color: #2b2724 !important;
+  border-color: #e5dfd5 !important;
+}
+
+.reading-surface-theme-oled {
+  background-color: #000000 !important;
+  color: #e2e8f0 !important;
+}
+
+.reading-surface-theme-oled .card {
+  background-color: #0d0f12 !important;
+  color: #e2e8f0 !important;
+  border-color: #23272e !important;
+}
+
+.reading-surface-theme-oled .reading-prose {
+  color: #f1f5f9 !important;
+}
+
+/* Audio Reader TTS Highlight */
+.tts-active-sentence {
+  background-color: rgba(13, 110, 253, 0.18);
+  border-radius: 4px;
+  box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.35);
+  transition: all 0.2s ease-in-out;
+  padding: 1px 2px;
+}
+
+/* Reading Focus / Fullscreen Mode */
+body.reading-focus-mode .app-navbar-wrapper,
+body.reading-focus-mode .mobile-bottom-nav,
+body.reading-focus-mode footer {
+  display: none !important;
+}
+
+body.reading-focus-mode .has-mobile-bottom-nav {
+  padding-bottom: 1rem !important;
+}
+

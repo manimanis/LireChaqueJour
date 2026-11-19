@@ -62,6 +62,71 @@
       </div>
     </div>
 
+    <!-- Badges & Trophées (Axe 5) -->
+    <div class="card shadow-sm border-0 mb-4">
+      <div class="card-body p-4">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+          <div>
+            <h5 class="fw-bold mb-1 d-flex align-items-center gap-2">
+              <i class="bi bi-trophy-fill text-warning"></i>
+              <span>Succès & Trophées de lecture</span>
+            </h5>
+            <p class="small text-body-secondary mb-0">
+              Débloquez des badges bienveillants pour célébrer votre régularité et vos étapes de lecture.
+            </p>
+          </div>
+          <span class="badge rounded-pill text-bg-warning-subtle text-warning-emphasis border border-warning-subtle fs-6 px-3 py-2">
+            {{ unlockedCount }} / {{ BADGES_CATALOG.length }} débloqués
+          </span>
+        </div>
+
+        <div class="row g-3">
+          <div
+            v-for="badge in BADGES_CATALOG"
+            :key="badge.id"
+            class="col-12 col-sm-6 col-lg-4"
+          >
+            <div
+              class="p-3 rounded-4 border h-100 d-flex align-items-start gap-3 transition-all"
+              :class="unlockedBadges[badge.id] ? 'bg-body border-primary-subtle shadow-sm' : 'bg-body-tertiary border-dashed opacity-60'"
+            >
+              <div
+                class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 shadow-sm"
+                :style="{
+                  width: '46px',
+                  height: '46px',
+                  backgroundColor: unlockedBadges[badge.id] ? badge.color : '#94a3b8',
+                  color: '#ffffff',
+                }"
+              >
+                <i class="bi fs-5" :class="badge.icon"></i>
+              </div>
+
+              <div class="flex-grow-1 overflow-hidden">
+                <div class="d-flex align-items-center gap-1">
+                  <span class="fw-bold small text-truncate">{{ badge.title }}</span>
+                  <i
+                    v-if="unlockedBadges[badge.id]"
+                    class="bi bi-check-circle-fill text-success small"
+                    title="Obtenu !"
+                  ></i>
+                </div>
+                <div class="small text-body-secondary lh-sm mb-1" style="font-size: 0.78rem">
+                  {{ badge.description }}
+                </div>
+                <div v-if="unlockedBadges[badge.id]" class="text-success small fw-semibold" style="font-size: 0.7rem">
+                  <i class="bi bi-calendar-check me-1"></i>Débloqué le {{ new Date(unlockedBadges[badge.id]).toLocaleDateString('fr-FR') }}
+                </div>
+                <div v-else class="text-body-tertiary small" style="font-size: 0.7rem">
+                  <i class="bi bi-lock me-1"></i>À débloquer
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Charts (Chart.js) -->
     <div class="row g-4 mb-4">
       <div class="col-lg-6">
@@ -149,6 +214,7 @@ import {
   Filler,
 } from 'chart.js';
 import { useLibraryStore } from '@/stores/libraryStore.js';
+import { BADGES_CATALOG, evaluateBadges } from '@/services/badgeService.js';
 
 Chart.register(
   BarController,
@@ -163,6 +229,14 @@ Chart.register(
 );
 
 const libraryStore = useLibraryStore();
+
+const unlockedBadges = ref({});
+const unlockedCount = computed(() => Object.keys(unlockedBadges.value).length);
+
+async function loadBadges() {
+  await evaluateBadges(libraryStore);
+  unlockedBadges.value = await libraryStore.getUnlockedBadges();
+}
 
 const weeklyCanvas = ref(null);
 const monthlyCanvas = ref(null);
@@ -324,7 +398,10 @@ function renderCharts() {
   }
 }
 
-onMounted(renderCharts);
+onMounted(async () => {
+  renderCharts();
+  await loadBadges();
+});
 watch(() => libraryStore.sessions.length, renderCharts);
 
 onUnmounted(() => {

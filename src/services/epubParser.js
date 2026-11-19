@@ -168,6 +168,7 @@ export async function parseEpubFile(file, onProgress) {
       author,
       cover,
       chapters,
+      toc: navigation?.toc || [],
       fullText,
       totalWords,
     };
