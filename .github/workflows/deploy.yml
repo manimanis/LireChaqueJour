@@ -38,14 +38,16 @@ jobs:
       - name: Run tests
         run: npm test
 
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
       - name: Build PWA
         run: npm run build
 
-      - name: Enable SPA fallback for GitHub Pages
-        run: cp dist/index.html dist/404.html
-
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
+      - name: Enable SPA fallback & disable Jekyll
+        run: |
+          cp dist/index.html dist/404.html
+          touch dist/.nojekyll
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
