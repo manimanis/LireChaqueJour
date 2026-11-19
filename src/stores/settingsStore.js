@@ -19,6 +19,8 @@ const DEFAULT_SETTINGS = {
   dictionaryProvider: 'wiktionary_fr',
   dictionaryCustomUrl: '',
   dictionaryAutoOpen: false,
+  highlightVocabularyWords: true,
+  speechSynthesisEnabled: true,
 };
 
 function loadSavedSettings() {
@@ -49,6 +51,8 @@ export const useSettingsStore = defineStore('settings', () => {
   const dictionaryProvider = ref(initial.dictionaryProvider ?? DEFAULT_SETTINGS.dictionaryProvider);
   const dictionaryCustomUrl = ref(initial.dictionaryCustomUrl ?? DEFAULT_SETTINGS.dictionaryCustomUrl);
   const dictionaryAutoOpen = ref(initial.dictionaryAutoOpen ?? DEFAULT_SETTINGS.dictionaryAutoOpen);
+  const highlightVocabularyWords = ref(initial.highlightVocabularyWords ?? DEFAULT_SETTINGS.highlightVocabularyWords);
+  const speechSynthesisEnabled = ref(initial.speechSynthesisEnabled ?? DEFAULT_SETTINGS.speechSynthesisEnabled);
 
   const persist = () => {
     try {
@@ -70,6 +74,8 @@ export const useSettingsStore = defineStore('settings', () => {
           dictionaryProvider: dictionaryProvider.value,
           dictionaryCustomUrl: dictionaryCustomUrl.value,
           dictionaryAutoOpen: dictionaryAutoOpen.value,
+          highlightVocabularyWords: highlightVocabularyWords.value,
+          speechSynthesisEnabled: speechSynthesisEnabled.value,
         })
       );
     } catch {
@@ -106,6 +112,8 @@ export const useSettingsStore = defineStore('settings', () => {
       dictionaryProvider,
       dictionaryCustomUrl,
       dictionaryAutoOpen,
+      highlightVocabularyWords,
+      speechSynthesisEnabled,
     ],
     () => {
       persist();
@@ -138,6 +146,8 @@ export const useSettingsStore = defineStore('settings', () => {
     dictionaryProvider.value = DEFAULT_SETTINGS.dictionaryProvider;
     dictionaryCustomUrl.value = DEFAULT_SETTINGS.dictionaryCustomUrl;
     dictionaryAutoOpen.value = DEFAULT_SETTINGS.dictionaryAutoOpen;
+    highlightVocabularyWords.value = DEFAULT_SETTINGS.highlightVocabularyWords;
+    speechSynthesisEnabled.value = DEFAULT_SETTINGS.speechSynthesisEnabled;
   }
 
   return {
@@ -156,6 +166,8 @@ export const useSettingsStore = defineStore('settings', () => {
     dictionaryProvider,
     dictionaryCustomUrl,
     dictionaryAutoOpen,
+    highlightVocabularyWords,
+    speechSynthesisEnabled,
     applyTheme,
     resetToDefaults,
   };

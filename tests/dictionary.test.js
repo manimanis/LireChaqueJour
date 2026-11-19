@@ -4,6 +4,8 @@ import {
   parseWiktionaryExtract,
   fetchWordDefinition,
   detectReferenceWord,
+  extractSentenceFromText,
+  generateAnkiCsv,
   DICTIONARY_PROVIDERS,
 } from '../src/services/dictionaryService.js';
 
@@ -210,6 +212,42 @@ Féminin singulier de débordant.
       const parsed = parseWiktionaryExtract('débordante', mockFlex);
       expect(parsed.referenceWords).toContain('débordant');
       expect(parsed.entries[0].definitionItems[0].referenceWord).toBe('débordant');
+    });
+  });
+
+  describe('extractSentenceFromText (Point 2: Reading Context)', () => {
+    const sampleParagraph =
+      "Le soleil se couchait sur les remparts du château. En tout cas, cette imagination débordante lui servait bien lorsqu'il fallait inventer des histoires. Edmond Dantès restait silencieux.";
+
+    it('extracts surrounding sentence for a target word', () => {
+      const sentence = extractSentenceFromText(sampleParagraph, 'débordante');
+      expect(sentence).toBe(
+        "En tout cas, cette imagination débordante lui servait bien lorsqu'il fallait inventer des histoires."
+      );
+    });
+
+    it('returns empty string if word not found in paragraph', () => {
+      expect(extractSentenceFromText(sampleParagraph, 'inexistant')).toBe('');
+    });
+  });
+
+  describe('generateAnkiCsv (Point 1: Flashcards & SRS Export)', () => {
+    it('formats vocabulary words into TSV rows for Anki', () => {
+      const sampleWords = [
+        {
+          word: 'débordant',
+          pronunciation: '\\de.bɔʁ.dɑ̃\\',
+          partOfSpeech: 'Adjectif',
+          topDefinition: 'Qui déborde de ses limites.',
+          contextSentence: 'Une imagination débordante.',
+          bookTitle: 'Le Comte de Monte-Cristo',
+          lookupCount: 2,
+        },
+      ];
+
+      const csv = generateAnkiCsv(sampleWords);
+      expect(csv).toContain('Mot\tPhonétique\tCatégorie\tDéfinition\tExemple / Contexte\tLivre\tConsultations');
+      expect(csv).toContain('débordant\t\\de.bɔʁ.dɑ̃\\\tAdjectif\tQui déborde de ses limites.\tUne imagination débordante.\tLe Comte de Monte-Cristo\t2');
     });
   });
 });

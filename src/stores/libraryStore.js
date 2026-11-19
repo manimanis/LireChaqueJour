@@ -517,6 +517,7 @@ export const useLibraryStore = defineStore('library', () => {
       if (existing) {
         await db.vocabulary.update(existing.id, {
           ...entry,
+          contextSentence: entry.contextSentence || existing.contextSentence || '',
           lookedUpAt: new Date().toISOString(),
           lookupCount: (existing.lookupCount || 1) + 1,
         });
@@ -524,6 +525,9 @@ export const useLibraryStore = defineStore('library', () => {
       } else {
         const id = await db.vocabulary.add({
           ...entry,
+          contextSentence: entry.contextSentence || '',
+          masteryLevel: 0, // 0: à réviser, 1: en cours, 2: maîtrisé
+          lastReviewedAt: null,
           lookedUpAt: new Date().toISOString(),
           lookupCount: 1,
         });
@@ -532,6 +536,46 @@ export const useLibraryStore = defineStore('library', () => {
     } catch (err) {
       console.warn('Erreur lors de l\'enregistrement du mot dans le vocabulaire:', err);
       return null;
+    }
+  }
+
+  /**
+   * Update mastery evaluation of a word (SRS / flashcards)
+   * @param {number} id
+   * @param {number} level - 0 (à revoir), 1 (en cours), 2 (maîtrisé)
+   */
+  async function updateWordMastery(id, level) {
+    try {
+      await db.vocabulary.update(id, {
+        masteryLevel: level,
+        lastReviewedAt: new Date().toISOString(),
+      });
+    } catch (err) {
+      console.warn('Erreur mise à jour maîtrise:', err);
+    }
+  }
+
+  /**
+   * Get words prioritized for daily review
+   * @param {string} [bookId=null]
+   * @param {number} [limit=5]
+   */
+  async function getReviewWords(bookId = null, limit = 5) {
+    try {
+      const all = await getVocabulary(bookId);
+      if (!all || all.length === 0) return [];
+      // Sort by masteryLevel ascending (level 0 first), then by oldest reviewed
+      const sorted = [...all].sort((a, b) => {
+        const mDiff = (a.masteryLevel || 0) - (b.masteryLevel || 0);
+        if (mDiff !== 0) return mDiff;
+        const dateA = a.lastReviewedAt ? new Date(a.lastReviewedAt) : new Date(a.lookedUpAt);
+        const dateB = b.lastReviewedAt ? new Date(b.lastReviewedAt) : new Date(b.lookedUpAt);
+        return dateA - dateB;
+      });
+      return sorted.slice(0, limit);
+    } catch (err) {
+      console.warn('Erreur mots de révision:', err);
+      return [];
     }
   }
 
@@ -600,5 +644,7 @@ export const useLibraryStore = defineStore('library', () => {
     getVocabulary,
     deleteVocabularyWord,
     clearVocabulary,
+    updateWordMastery,
+    getReviewWords,
   };
 });

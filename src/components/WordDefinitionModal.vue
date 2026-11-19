@@ -1,21 +1,24 @@
 <template>
   <div v-if="settingsStore.dictionaryEnabled">
-    <!-- Floating Action Trigger (appears above selected word) -->
+    <!-- Floating Action Trigger (appears near selected word) -->
     <div
       v-if="floatingTrigger.visible && !isModalOpen"
       class="word-def-floating-trigger position-fixed"
       :style="{
         top: `${floatingTrigger.top}px`,
         left: `${floatingTrigger.left}px`,
-        transform: 'translate(-50%, -100%)',
+        transform: floatingTrigger.placeAbove ? 'translate(-50%, -100%)' : 'translate(-50%, 0)',
         zIndex: 1070,
       }"
     >
       <button
         type="button"
-        class="btn btn-sm btn-primary shadow-sm rounded-pill d-inline-flex align-items-center gap-1 px-3 py-1 animate-fade-in"
-        @mousedown.prevent
-        @click="openForWord(floatingTrigger.word)"
+        class="btn btn-sm btn-primary shadow rounded-pill d-inline-flex align-items-center gap-1 px-3 py-1 animate-fade-in"
+        style="touch-action: manipulation; user-select: none; -webkit-user-select: none;"
+        @touchstart.prevent.stop="onTriggerPress"
+        @pointerdown.prevent.stop="onTriggerPress"
+        @mousedown.prevent.stop="onTriggerPress"
+        @click.prevent.stop="onTriggerPress"
       >
         <i class="bi bi-book-half"></i>
         <span>Définir</span>
@@ -72,13 +75,13 @@
               </span>
 
               <button
-                v-if="activeResult?.audioUrl"
                 type="button"
                 class="btn btn-sm btn-outline-primary rounded-circle p-1 lh-1"
-                title="Écouter la prononciation"
-                @click="playAudio(activeResult.audioUrl)"
+                :class="{ 'btn-primary text-white': isSpeaking }"
+                title="Écouter la prononciation vocale"
+                @click="handleAudioPronunciation"
               >
-                <i class="bi bi-volume-up-fill"></i>
+                <i class="bi" :class="isSpeaking ? 'bi-volume-up-fill animate-pulse' : 'bi-volume-up'"></i>
               </button>
             </div>
 
@@ -177,6 +180,19 @@
                   <span>Définir « {{ activeResult.referenceWords[0] }} »</span>
                   <i class="bi bi-arrow-right"></i>
                 </button>
+              </div>
+
+              <!-- Context sentence from reading (Point 2) -->
+              <div
+                v-if="currentContextSentence"
+                class="p-2 mb-3 rounded bg-body-tertiary small border-start border-3 border-primary shadow-sm"
+              >
+                <div class="fw-semibold text-primary mb-1">
+                  <i class="bi bi-chat-quote-fill me-1"></i>Dans votre lecture :
+                </div>
+                <div class="fst-italic text-body">
+                  « {{ currentContextSentence }} »
+                </div>
               </div>
 
               <!-- Thumbnail (for Wikipedia) -->
@@ -323,6 +339,8 @@ import {
   cleanSelectedWord,
   fetchWordDefinition,
   DICTIONARY_PROVIDERS,
+  speakWord,
+  extractContextSentence,
 } from '@/services/dictionaryService.js';
 
 const settingsStore = useSettingsStore();
@@ -331,8 +349,10 @@ const libraryStore = useLibraryStore();
 const floatingTrigger = ref({
   visible: false,
   word: '',
+  contextSentence: '',
   top: 0,
   left: 0,
+  placeAbove: false,
 });
 
 const isModalOpen = ref(false);
@@ -344,11 +364,25 @@ const activeResult = ref(null);
 const copied = ref(false);
 const savedInVocab = ref(false);
 const navigationStack = ref([]);
+const currentContextSentence = ref('');
+const isSpeaking = ref(false);
 
 let audioPlayer = null;
 
+function onTriggerPress(e) {
+  if (e) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+  const word = floatingTrigger.value.word;
+  const context = floatingTrigger.value.contextSentence;
+  if (word) {
+    openForWord(word, null, true, context);
+  }
+}
+
 function handleSelection() {
-  if (!settingsStore.dictionaryEnabled) {
+  if (!settingsStore.dictionaryEnabled || isModalOpen.value) {
     hideFloatingTrigger();
     return;
   }
@@ -371,42 +405,89 @@ function handleSelection() {
   // Do not trigger inside inputs, textareas, or contenteditables
   const anchorNode = selection.anchorNode;
   const element = anchorNode?.nodeType === Node.ELEMENT_NODE ? anchorNode : anchorNode?.parentElement;
-  if (element?.closest('input, textarea, select, [contenteditable="true"], .no-def-lookup')) {
-    hideFloatingTrigger();
+  if (element?.closest('input, textarea, select, [contenteditable="true"], .no-def-lookup, .word-def-floating-trigger, .modal')) {
     return;
   }
 
   const range = selection.getRangeAt(0);
-  const rect = range.getBoundingClientRect();
+  let rect = range.getBoundingClientRect();
   if (rect.width === 0 && rect.height === 0) {
-    hideFloatingTrigger();
-    return;
+    const clientRects = range.getClientRects();
+    if (clientRects.length > 0) {
+      rect = clientRects[0];
+    } else {
+      hideFloatingTrigger();
+      return;
+    }
   }
 
-  // Calculate coordinates relative to viewport
-  const left = Math.min(Math.max(rect.left + rect.width / 2, 80), window.innerWidth - 80);
-  const top = Math.max(rect.top - 8, 40);
+  // Extract surrounding reading sentence for context (Point 2)
+  const context = extractContextSentence(selection);
 
   if (settingsStore.dictionaryAutoOpen) {
     hideFloatingTrigger();
-    openForWord(cleaned);
-  } else {
-    floatingTrigger.value = {
-      visible: true,
-      word: cleaned,
-      top,
-      left,
-    };
+    openForWord(cleaned, null, true, context);
+    return;
   }
+
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const isMobile = vw < 768 || ('ontouchstart' in window);
+
+  // Center horizontally relative to selection, clamped to viewport margins
+  const left = Math.min(Math.max(rect.left + rect.width / 2, 95), vw - 95);
+
+  const spaceAbove = rect.top;
+  const spaceBelow = vh - rect.bottom;
+
+  let placeAbove = false;
+  let top = 0;
+
+  if (isMobile) {
+    // On mobile touch devices, the native OS toolbar (Copy / Look up / Share) floats directly ABOVE the word.
+    // Placing our button below the word avoids obstruction by the OS toolbar.
+    // Account for mobile bottom nav (~70px height)
+    if (spaceBelow >= 70) {
+      placeAbove = false;
+      top = Math.min(rect.bottom + 8, vh - 75);
+    } else if (spaceAbove >= 95) {
+      placeAbove = true;
+      top = Math.max(rect.top - 10, 60);
+    } else {
+      placeAbove = false;
+      top = Math.max(65, vh - 75);
+    }
+  } else {
+    // Desktop: default above unless too close to top bar (< 80px)
+    if (spaceAbove >= 75) {
+      placeAbove = true;
+      top = Math.max(rect.top - 8, 55);
+    } else {
+      placeAbove = false;
+      top = Math.min(rect.bottom + 8, vh - 35);
+    }
+  }
+
+  floatingTrigger.value = {
+    visible: true,
+    word: cleaned,
+    contextSentence: context,
+    top,
+    left,
+    placeAbove,
+  };
 }
 
 function hideFloatingTrigger() {
   floatingTrigger.value.visible = false;
 }
 
-async function openForWord(word, provider = null, clearHistory = true) {
+async function openForWord(word, provider = null, clearHistory = true, contextSentence = '') {
   if (clearHistory) {
     navigationStack.value = [];
+  }
+  if (contextSentence) {
+    currentContextSentence.value = contextSentence;
   }
   currentQuery.value = word;
   currentProvider.value = provider || settingsStore.dictionaryProvider || 'wiktionary_fr';
@@ -459,7 +540,7 @@ async function loadDefinition() {
     });
     activeResult.value = res;
 
-    // Automatically record lookup in Vocabulary notebook
+    // Automatically record lookup in Vocabulary notebook with context sentence
     if (res && res.entries && res.entries.length > 0) {
       const currentBook = libraryStore.activeBook;
       await libraryStore.recordWordLookup({
@@ -475,6 +556,7 @@ async function loadDefinition() {
         entries: res.entries,
         referenceWords: res.referenceWords || [],
         etymology: res.etymology || '',
+        contextSentence: currentContextSentence.value || '',
         bookId: currentBook?.id || 'general',
         bookTitle: currentBook?.title || 'Toutes les lectures',
       });
@@ -496,8 +578,13 @@ function closeModal() {
   isModalOpen.value = false;
   activeResult.value = null;
   error.value = null;
+  currentContextSentence.value = '';
   navigationStack.value = [];
   hideFloatingTrigger();
+  if (isSpeaking.value) {
+    window.speechSynthesis?.cancel();
+    isSpeaking.value = false;
+  }
 }
 
 function playAudio(url) {
@@ -510,12 +597,35 @@ function playAudio(url) {
   }
 }
 
+function handleAudioPronunciation() {
+  const word = activeResult.value?.word || currentQuery.value;
+  if (!word) return;
+
+  if (activeResult.value?.audioUrl) {
+    playAudio(activeResult.value.audioUrl);
+    return;
+  }
+
+  // Web Speech Synthesis (Point 3)
+  if (settingsStore.speechSynthesisEnabled) {
+    isSpeaking.value = true;
+    const lang = currentProvider.value === 'dictionary_api_en' ? 'en-US' : 'fr-FR';
+    speakWord(word, lang, () => {
+      isSpeaking.value = false;
+    });
+  }
+}
+
 async function copyDefinition() {
   if (!activeResult.value) return;
   const defs = activeResult.value.entries
     .map(e => `${e.partOfSpeech} :\n` + e.definitions.map(d => `• ${d}`).join('\n'))
     .join('\n\n');
-  const fullText = `${activeResult.value.word}\n\n${defs}\n\nSource : ${activeResult.value.sourceUrl}`;
+  let fullText = `${activeResult.value.word}\n\n${defs}`;
+  if (currentContextSentence.value) {
+    fullText += `\n\nContexte: « ${currentContextSentence.value} »`;
+  }
+  fullText += `\n\nSource : ${activeResult.value.sourceUrl}`;
 
   try {
     await navigator.clipboard.writeText(fullText);
@@ -528,36 +638,96 @@ async function copyDefinition() {
   }
 }
 
-// Global selection listeners
-function onMouseUp(e) {
-  // If clicking inside the floating trigger or modal, do not close or recalculate
-  if (e.target.closest('.word-def-floating-trigger') || e.target.closest('.modal')) {
+// Global selection listeners & debounce timer
+let selectionDebounceTimer = null;
+
+function debouncedHandleSelection(delay = 180) {
+  if (selectionDebounceTimer) {
+    clearTimeout(selectionDebounceTimer);
+  }
+  selectionDebounceTimer = setTimeout(() => {
+    handleSelection();
+  }, delay);
+}
+
+function onSelectionChange() {
+  if (isModalOpen.value) return;
+
+  const selection = window.getSelection();
+  if (!selection || selection.isCollapsed || !selection.toString().trim()) {
+    // If focus or touch is on our trigger button, do not clear
+    if (document.activeElement?.closest('.word-def-floating-trigger')) {
+      return;
+    }
+    // Small delay so a touchstart on the button doesn't prematurely hide before press executes
+    if (selectionDebounceTimer) clearTimeout(selectionDebounceTimer);
+    selectionDebounceTimer = setTimeout(() => {
+      const s = window.getSelection();
+      if (!s || s.isCollapsed || !s.toString().trim()) {
+        hideFloatingTrigger();
+      }
+    }, 120);
     return;
   }
-  // Delay slightly to allow browser selection to finish settling
-  setTimeout(handleSelection, 20);
+
+  // Active non-empty selection: wait for user to finish touching/moving handles
+  debouncedHandleSelection(180);
+}
+
+function onMouseUp(e) {
+  // If clicking inside the floating trigger or modal, do not close or recalculate
+  if (e?.target?.closest('.word-def-floating-trigger') || e?.target?.closest('.modal')) {
+    return;
+  }
+  debouncedHandleSelection(60);
+}
+
+function onTouchEnd(e) {
+  if (e?.target?.closest('.word-def-floating-trigger') || e?.target?.closest('.modal')) {
+    return;
+  }
+  // On mobile touch, allow browser to finish committing the selection range
+  debouncedHandleSelection(120);
 }
 
 function onKeyUp(e) {
   // Check selection when using keyboard Shift+Arrows
   if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
-    setTimeout(handleSelection, 20);
+    debouncedHandleSelection(60);
+  }
+}
+
+function onGlobalOpenWord(e) {
+  const word = e.detail?.word;
+  const context = e.detail?.contextSentence || '';
+  if (word) {
+    openForWord(word, null, true, context);
   }
 }
 
 onMounted(() => {
+  document.addEventListener('selectionchange', onSelectionChange);
   document.addEventListener('mouseup', onMouseUp);
-  document.addEventListener('touchend', onMouseUp);
+  document.addEventListener('touchend', onTouchEnd, { passive: true });
   document.addEventListener('keyup', onKeyUp);
+  window.addEventListener('open-word-definition', onGlobalOpenWord);
 });
 
 onUnmounted(() => {
+  if (selectionDebounceTimer) {
+    clearTimeout(selectionDebounceTimer);
+  }
+  document.removeEventListener('selectionchange', onSelectionChange);
   document.removeEventListener('mouseup', onMouseUp);
-  document.removeEventListener('touchend', onMouseUp);
+  document.removeEventListener('touchend', onTouchEnd);
   document.removeEventListener('keyup', onKeyUp);
+  window.removeEventListener('open-word-definition', onGlobalOpenWord);
   if (audioPlayer) {
     audioPlayer.pause();
     audioPlayer = null;
+  }
+  if (isSpeaking.value) {
+    window.speechSynthesis?.cancel();
   }
 });
 </script>
@@ -566,16 +736,16 @@ onUnmounted(() => {
 .word-def-floating-trigger {
   animation: fadeIn 0.15s ease-out;
   pointer-events: auto;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 @keyframes fadeIn {
   from {
     opacity: 0;
-    transform: translate(-50%, -85%);
   }
   to {
     opacity: 1;
-    transform: translate(-50%, -100%);
   }
 }
 

@@ -125,7 +125,18 @@
             </select>
           </div>
 
-          <div>
+          <div class="d-flex align-items-center gap-2">
+            <button
+              type="button"
+              class="btn btn-sm"
+              :class="settingsStore.highlightVocabularyWords ? 'btn-primary' : 'btn-outline-secondary'"
+              title="Surligner les mots du carnet de vocabulaire dans le texte"
+              @click="settingsStore.highlightVocabularyWords = !settingsStore.highlightVocabularyWords"
+            >
+              <i class="bi bi-highlighter me-1"></i>
+              <span>Surligner ({{ vocabList.length }})</span>
+            </button>
+
             <RouterLink
               :to="`/vocabulary?bookId=${book.id}`"
               class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1"
@@ -134,6 +145,38 @@
               <i class="bi bi-journal-bookmark"></i>
               <span>Vocabulaire</span>
             </RouterLink>
+          </div>
+        </div>
+      </div>
+
+      <!-- Daily Vocabulary Review Widget (Point 1) -->
+      <div v-if="reviewWords.length > 0" class="card shadow-sm border-0 mb-4 border-start border-4 border-primary">
+        <div class="card-body p-3">
+          <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+            <h6 class="fw-bold mb-0 d-flex align-items-center gap-2 text-primary">
+              <i class="bi bi-lightbulb-fill"></i>
+              <span>Vocabulaire à réviser ({{ reviewWords.length }})</span>
+            </h6>
+            <RouterLink
+              :to="`/vocabulary?mode=flashcards&bookId=${book.id}`"
+              class="btn btn-sm btn-outline-primary rounded-pill py-0 px-2"
+            >
+              <i class="bi bi-play-circle me-1"></i>Lancer les Flashcards
+            </RouterLink>
+          </div>
+
+          <div class="d-flex flex-wrap gap-2 pt-1">
+            <button
+              v-for="rw in reviewWords"
+              :key="rw.id"
+              type="button"
+              class="btn btn-sm btn-light border rounded-pill d-inline-flex align-items-center gap-1 py-1 px-3 shadow-sm"
+              @click="triggerWordLookup(rw.word, rw.contextSentence)"
+            >
+              <span class="fw-semibold text-capitalize">{{ rw.word }}</span>
+              <span v-if="rw.masteryLevel === 2" class="text-success small ms-1" title="Maîtrisé">✓</span>
+              <span v-else class="text-warning small ms-1" title="À réviser">●</span>
+            </button>
           </div>
         </div>
       </div>
@@ -155,10 +198,13 @@
             <div
               class="reading-prose"
               :style="readingStyle"
+              @click="handleReadingProseClick"
             >
-              <p v-for="(para, idx) in paragraphs" :key="idx">
-                {{ para }}
-              </p>
+              <p
+                v-for="(para, idx) in paragraphs"
+                :key="idx"
+                v-html="renderParagraph(para)"
+              ></p>
             </div>
           </div>
 
@@ -237,11 +283,16 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useLibraryStore } from '@/stores/libraryStore.js';
 import { useSettingsStore } from '@/stores/settingsStore.js';
 import { estimateReadingMinutes } from '@/services/segmenter.js';
+import {
+  triggerWordLookup,
+  extractSentenceFromText,
+  cleanSelectedWord,
+} from '@/services/dictionaryService.js';
 import SummaryCard from '@/components/SummaryCard.vue';
 
 const route = useRoute();
@@ -256,6 +307,61 @@ const summaryText = ref('');
 const summaryLoading = ref(false);
 const displayedDay = ref(1);
 const justCompletedMsg = ref('');
+const vocabList = ref([]);
+const reviewWords = ref([]);
+
+const knownWords = computed(() => {
+  return new Set(vocabList.value.map((w) => w.word.toLowerCase()));
+});
+
+async function loadVocab() {
+  if (!book.value) return;
+  try {
+    vocabList.value = await libraryStore.getVocabulary(book.value.id);
+    reviewWords.value = await libraryStore.getReviewWords(book.value.id, 5);
+  } catch {
+    // Ignore db load error
+  }
+}
+
+function escapeHtml(str) {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function renderParagraph(para) {
+  if (!settingsStore.highlightVocabularyWords || knownWords.value.size === 0) {
+    return escapeHtml(para);
+  }
+
+  // Tokenize words and non-words
+  const tokens = para.split(/(\b[a-zA-ZÀ-ÿœæÇç-]+\b)/);
+  return tokens
+    .map((token) => {
+      const cleaned = cleanSelectedWord(token).toLowerCase();
+      if (cleaned && knownWords.value.has(cleaned)) {
+        return `<mark class="vocab-highlight" data-word="${escapeHtml(token)}" title="Mot déjà consulté : cliquer pour revoir sa définition">${escapeHtml(token)}</mark>`;
+      }
+      return escapeHtml(token);
+    })
+    .join('');
+}
+
+function handleReadingProseClick(e) {
+  const mark = e.target.closest('.vocab-highlight');
+  if (mark) {
+    const word = mark.getAttribute('data-word');
+    if (word) {
+      const paraText = mark.closest('p')?.textContent || '';
+      const context = extractSentenceFromText(paraText, word);
+      triggerWordLookup(word, context);
+    }
+  }
+}
 
 const book = computed(() => {
   const paramId = route.params.bookId;
@@ -334,9 +440,18 @@ watch(
     displayedDay.value = prog.currentSegment || 1;
     justCompletedMsg.value = '';
     await loadSegmentAndSummary(displayedDay.value);
+    await loadVocab();
   },
   { immediate: true }
 );
+
+onMounted(() => {
+  window.addEventListener('focus', loadVocab);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('focus', loadVocab);
+});
 
 function switchBook(bookId) {
   settingsStore.currentBookId = bookId;
@@ -382,3 +497,19 @@ function scrollToSummary() {
   summarySectionRef.value?.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 </script>
+
+<style scoped>
+.reading-prose :deep(.vocab-highlight) {
+  background-color: rgba(var(--bs-primary-rgb), 0.14);
+  border-bottom: 2px dotted var(--bs-primary);
+  color: inherit;
+  padding: 0 2px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: background-color 0.15s ease-in-out;
+}
+
+.reading-prose :deep(.vocab-highlight:hover) {
+  background-color: rgba(var(--bs-primary-rgb), 0.28);
+}
+</style>

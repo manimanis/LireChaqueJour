@@ -20,6 +20,8 @@ body {
   text-align: justify;
   hyphens: auto;
   word-break: break-word;
+  -webkit-user-select: text;
+  user-select: text;
 }
 
 @media (max-width: 575.98px) {

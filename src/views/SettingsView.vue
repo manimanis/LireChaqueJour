@@ -187,6 +187,41 @@
             </div>
           </div>
 
+          <!-- Highlight & Audio Switches -->
+          <div class="col-md-6">
+            <div class="form-check form-switch mt-2">
+              <input
+                id="highlightVocabSwitch"
+                v-model="settingsStore.highlightVocabularyWords"
+                class="form-check-input"
+                type="checkbox"
+              />
+              <label class="form-check-label fw-semibold" for="highlightVocabSwitch">
+                Surligner les mots du carnet dans la lecture
+              </label>
+              <div class="form-text small">
+                Souligne discrètement les mots déjà consultés pour faciliter leur réactivation mémorielle.
+              </div>
+            </div>
+          </div>
+
+          <div class="col-md-6">
+            <div class="form-check form-switch mt-2">
+              <input
+                id="speechSynthesisSwitch"
+                v-model="settingsStore.speechSynthesisEnabled"
+                class="form-check-input"
+                type="checkbox"
+              />
+              <label class="form-check-label fw-semibold" for="speechSynthesisSwitch">
+                Prononciation vocale automatique
+              </label>
+              <div class="form-text small">
+                Utilise la synthèse vocale française du navigateur si aucun fichier audio n'est fourni.
+              </div>
+            </div>
+          </div>
+
           <!-- URL personnalisée si custom -->
           <div v-if="settingsStore.dictionaryProvider === 'custom'" class="col-12">
             <label class="form-label fw-semibold">Modèle d'URL API personnalisée</label>

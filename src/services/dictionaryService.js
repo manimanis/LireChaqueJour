@@ -70,6 +70,140 @@ export function cleanSelectedWord(raw) {
 }
 
 /**
+ * Universal voice pronunciation using browser Web Speech Synthesis
+ * @param {string} text
+ * @param {string} [lang='fr-FR']
+ * @param {Function} [onEnd=null]
+ * @returns {boolean}
+ */
+export function speakWord(text, lang = 'fr-FR', onEnd = null) {
+  if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
+    return false;
+  }
+  try {
+    window.speechSynthesis.cancel();
+    const clean = cleanSelectedWord(text);
+    if (!clean) return false;
+
+    const utterance = new SpeechSynthesisUtterance(clean);
+    utterance.lang = lang;
+    utterance.rate = 0.9;
+
+    const voices = window.speechSynthesis.getVoices();
+    const targetLangPrefix = lang.slice(0, 2).toLowerCase();
+    const voice = voices.find(v => v.lang.toLowerCase().startsWith(targetLangPrefix));
+    if (voice) utterance.voice = voice;
+
+    if (onEnd) {
+      utterance.onend = () => onEnd();
+      utterance.onerror = () => onEnd();
+    }
+
+    window.speechSynthesis.speak(utterance);
+    return true;
+  } catch (err) {
+    console.warn('Speech synthesis error:', err);
+    if (onEnd) onEnd();
+    return false;
+  }
+}
+
+/**
+ * Extract surrounding sentence from full paragraph text for a given selected word
+ * @param {string} fullText
+ * @param {string} selectedWord
+ * @returns {string}
+ */
+export function extractSentenceFromText(fullText, selectedWord) {
+  if (!fullText || !selectedWord || typeof fullText !== 'string') return '';
+  const cleanWord = cleanSelectedWord(selectedWord);
+  if (!cleanWord) return '';
+
+  const lowerText = fullText.toLowerCase();
+  const lowerWord = cleanWord.toLowerCase();
+  const index = lowerText.indexOf(lowerWord);
+  if (index === -1) return '';
+
+  const beforeText = fullText.slice(0, index);
+  const boundaryRegex = /(?:[.!?»]\s+|\n+)/g;
+  let lastBoundary = 0;
+  let match;
+  while ((match = boundaryRegex.exec(beforeText)) !== null) {
+    lastBoundary = match.index + match[0].length;
+  }
+
+  const afterText = fullText.slice(index + cleanWord.length);
+  const nextMatch = afterText.match(/[.!?](\s+|$)/);
+  const end = nextMatch
+    ? index + cleanWord.length + nextMatch.index + 1
+    : fullText.length;
+
+  const sentence = fullText.slice(lastBoundary, end).trim();
+  return sentence.length >= 8 && sentence.length <= 400 ? sentence : '';
+}
+
+/**
+ * Extract context sentence from window selection
+ * @param {Selection} selection
+ * @returns {string}
+ */
+export function extractContextSentence(selection) {
+  if (typeof window === 'undefined' || !selection || selection.rangeCount === 0) return '';
+  try {
+    const range = selection.getRangeAt(0);
+    let container = range.commonAncestorContainer;
+    if (container.nodeType === 3 /* Node.TEXT_NODE */) {
+      container = container.parentElement;
+    }
+    const fullText = container?.textContent || '';
+    const selectedWord = selection.toString().trim();
+    return extractSentenceFromText(fullText, selectedWord);
+  } catch {
+    return '';
+  }
+}
+
+/**
+ * Dispatch global event to trigger word definition modal from any view/component
+ * @param {string} word
+ * @param {string} [contextSentence='']
+ */
+export function triggerWordLookup(word, contextSentence = '') {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(
+    new CustomEvent('open-word-definition', {
+      detail: { word, contextSentence },
+    })
+  );
+}
+
+/**
+ * Export vocabulary list to Anki-compatible CSV format
+ * @param {Array<object>} words
+ * @returns {string}
+ */
+export function generateAnkiCsv(words) {
+  if (!Array.isArray(words) || words.length === 0) return '';
+  const rows = [
+    ['Mot', 'Phonétique', 'Catégorie', 'Définition', 'Exemple / Contexte', 'Livre', 'Consultations'].join('\t'),
+  ];
+
+  for (const w of words) {
+    const word = (w.word || '').replace(/[\t\n]/g, ' ');
+    const phonetic = (w.pronunciation || '').replace(/[\t\n]/g, ' ');
+    const pos = (w.partOfSpeech || '').replace(/[\t\n]/g, ' ');
+    const def = (w.topDefinition || '').replace(/[\t\n]/g, ' ');
+    const context = (w.contextSentence || '').replace(/[\t\n]/g, ' ');
+    const book = (w.bookTitle || '').replace(/[\t\n]/g, ' ');
+    const count = String(w.lookupCount || 1);
+
+    rows.push([word, phonetic, pos, def, context, book, count].join('\t'));
+  }
+
+  return rows.join('\n');
+}
+
+/**
  * Detect if a definition text is a cross-reference to another word (lemma, base verb, etc.)
  * e.g. "Féminin singulier de débordant." -> "débordant"
  * e.g. "Pluriel de livre." -> "livre"
