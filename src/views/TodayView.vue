@@ -157,161 +157,6 @@
         </div>
       </div>
 
-      <!-- Quick Reading Comfort Controls (Axe 1 & 2) -->
-      <div v-if="!isFocusMode" class="card border-0 bg-body-tertiary mb-4">
-        <div class="card-body py-2 px-3 d-flex flex-wrap align-items-center justify-content-between gap-2 small">
-          <!-- Typo & Sizes -->
-          <div class="d-flex flex-wrap align-items-center gap-2">
-            <div class="d-flex align-items-center gap-1">
-              <label class="text-body-secondary mb-0">Police :</label>
-              <select
-                v-model="settingsStore.fontFamily"
-                class="form-select form-select-sm w-auto"
-              >
-                <option value="Georgia">Georgia</option>
-                <option value="Merriweather">Merriweather</option>
-                <option value="Open Sans">Open Sans</option>
-                <option value="Arial">Arial</option>
-              </select>
-            </div>
-
-            <div class="d-flex align-items-center gap-1">
-              <button
-                type="button"
-                class="btn btn-sm btn-outline-secondary px-2 py-0"
-                :disabled="settingsStore.fontSize <= 12"
-                @click="settingsStore.fontSize = Math.max(12, settingsStore.fontSize - 1)"
-              >
-                A-
-              </button>
-              <span class="fw-semibold">{{ settingsStore.fontSize }}px</span>
-              <button
-                type="button"
-                class="btn btn-sm btn-outline-secondary px-2 py-0"
-                :disabled="settingsStore.fontSize >= 32"
-                @click="settingsStore.fontSize = Math.min(32, settingsStore.fontSize + 1)"
-              >
-                A+
-              </button>
-            </div>
-
-            <!-- Reading Themes (Axe 2) -->
-            <div class="d-flex align-items-center gap-1 ms-sm-2">
-              <label class="text-body-secondary mb-0">Thème :</label>
-              <select
-                v-model="settingsStore.readingTheme"
-                class="form-select form-select-sm w-auto fw-semibold"
-              >
-                <option value="default">Défaut</option>
-                <option value="sepia">Sépia (Chaud)</option>
-                <option value="ivory">Ivoire (Doux)</option>
-                <option value="oled">Noir OLED</option>
-              </select>
-            </div>
-          </div>
-
-          <!-- Feature Action Buttons -->
-          <div class="d-flex flex-wrap align-items-center gap-2">
-            <!-- Audio toggle (Axe 1) -->
-            <button
-              type="button"
-              class="btn btn-sm"
-              :class="showAudioPlayer ? 'btn-primary' : 'btn-outline-primary'"
-              title="Écouter le segment en synthèse vocale"
-              @click="toggleAudioBar"
-            >
-              <i class="bi bi-headphones me-1"></i>
-              <span>Écouter</span>
-            </button>
-
-            <!-- Table of contents & Search (Axe 4) -->
-            <button
-              type="button"
-              class="btn btn-sm btn-outline-secondary"
-              title="Table des matières et recherche dans le livre"
-              @click="showTocDrawer = true"
-            >
-              <i class="bi bi-list-columns-reverse me-1"></i>
-              <span>Chapitres</span>
-            </button>
-
-            <!-- Mode pagination vs scroll (Axe 2) -->
-            <button
-              type="button"
-              class="btn btn-sm"
-              :class="settingsStore.readingMode === 'paginated' ? 'btn-primary' : 'btn-outline-secondary'"
-              :title="settingsStore.readingMode === 'paginated' ? 'Passer en défilement vertical' : 'Passer en mode pages horizontales'"
-              @click="toggleReadingMode"
-            >
-              <i class="bi" :class="settingsStore.readingMode === 'paginated' ? 'bi-book-half' : 'bi-card-text'"></i>
-              <span class="d-none d-sm-inline ms-1">{{ settingsStore.readingMode === 'paginated' ? 'Pages' : 'Scroll' }}</span>
-            </button>
-
-            <!-- Focus / Fullscreen Mode (Axe 2) -->
-            <button
-              type="button"
-              class="btn btn-sm btn-outline-secondary"
-              title="Mode lecture plein écran sans distraction"
-              @click="toggleFocusMode"
-            >
-              <i class="bi bi-arrows-fullscreen"></i>
-            </button>
-
-            <!-- Highlight Vocab toggle -->
-            <button
-              type="button"
-              class="btn btn-sm"
-              :class="settingsStore.highlightVocabularyWords ? 'btn-primary' : 'btn-outline-secondary'"
-              title="Surligner les mots du carnet de vocabulaire"
-              @click="settingsStore.highlightVocabularyWords = !settingsStore.highlightVocabularyWords"
-            >
-              <i class="bi bi-highlighter"></i>
-            </button>
-
-            <!-- Vocabulary link -->
-            <RouterLink
-              :to="`/vocabulary?bookId=${book.id}`"
-              class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1"
-              title="Consulter le carnet de vocabulaire pour ce livre"
-            >
-              <i class="bi bi-journal-bookmark"></i>
-            </RouterLink>
-          </div>
-        </div>
-      </div>
-
-      <!-- Daily Vocabulary Review Widget (Point 1) -->
-      <div v-if="!isFocusMode && reviewWords.length > 0" class="card shadow-sm border-0 mb-4 border-start border-4 border-primary">
-        <div class="card-body p-3">
-          <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
-            <h6 class="fw-bold mb-0 d-flex align-items-center gap-2 text-primary">
-              <i class="bi bi-lightbulb-fill"></i>
-              <span>Vocabulaire à réviser ({{ reviewWords.length }})</span>
-            </h6>
-            <RouterLink
-              :to="`/vocabulary?mode=flashcards&bookId=${book.id}`"
-              class="btn btn-sm btn-outline-primary rounded-pill py-0 px-2"
-            >
-              <i class="bi bi-play-circle me-1"></i>Lancer les Flashcards
-            </RouterLink>
-          </div>
-
-          <div class="d-flex flex-wrap gap-2 pt-1">
-            <button
-              v-for="rw in reviewWords"
-              :key="rw.id"
-              type="button"
-              class="btn btn-sm btn-light border rounded-pill d-inline-flex align-items-center gap-1 py-1 px-3 shadow-sm"
-              @click="triggerWordLookup(rw.word, rw.contextSentence)"
-            >
-              <span class="fw-semibold text-capitalize">{{ rw.word }}</span>
-              <span v-if="rw.masteryLevel === 2" class="text-success small ms-1" title="Maîtrisé">✓</span>
-              <span v-else class="text-warning small ms-1" title="À réviser">●</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
       <!-- Segment Content -->
       <div
         class="card shadow-sm border-0 mb-4 position-relative"
@@ -325,12 +170,61 @@
           </div>
 
           <div v-else-if="currentSegment">
-            <div class="d-flex justify-content-between align-items-center text-body-secondary small mb-4 pb-2 border-bottom">
-              <span>Lecture du jour {{ currentSegment.dayNumber }}</span>
-              <span v-if="settingsStore.readingMode === 'paginated'">
-                Page {{ currentPageIdx + 1 }} / {{ paginatedPages.length }}
-              </span>
-              <span>{{ currentSegment.wordCount }} mots</span>
+            <!-- Reader Header Strip with Compact Actions (Aa, Audio, TOC, Focus) -->
+            <div class="d-flex flex-wrap justify-content-between align-items-center text-body-secondary small mb-4 pb-2 border-bottom gap-2">
+              <div class="d-flex align-items-center gap-2">
+                <span class="fw-bold text-body">Jour {{ currentSegment.dayNumber }}</span>
+                <span>•</span>
+                <span>{{ currentSegment.wordCount }} mots</span>
+                <span v-if="settingsStore.readingMode === 'paginated'">
+                  • Page {{ currentPageIdx + 1 }} / {{ paginatedPages.length }}
+                </span>
+              </div>
+
+              <div class="d-flex align-items-center gap-1">
+                <!-- Audio toggle -->
+                <button
+                  type="button"
+                  class="btn btn-sm"
+                  :class="showAudioPlayer ? 'btn-primary' : 'btn-outline-primary'"
+                  title="Écouter le segment en synthèse vocale"
+                  @click="toggleAudioBar"
+                >
+                  <i class="bi bi-headphones me-1"></i>
+                  <span class="d-none d-sm-inline">Écouter</span>
+                </button>
+
+                <!-- Table of Contents / Chapters -->
+                <button
+                  type="button"
+                  class="btn btn-sm btn-outline-secondary"
+                  title="Table des matières et chapitres"
+                  @click="showTocDrawer = true"
+                >
+                  <i class="bi bi-list-columns-reverse me-1"></i>
+                  <span class="d-none d-sm-inline">Chapitres</span>
+                </button>
+
+                <!-- Reading Options (Aa) Drawer trigger -->
+                <button
+                  type="button"
+                  class="btn btn-sm btn-outline-secondary fw-bold px-2 py-1 shadow-sm"
+                  title="Options d'affichage et de lecture (Aa)"
+                  @click="showReadingOptionsDrawer = true"
+                >
+                  <span style="font-size: 0.95rem; font-family: serif;">Aa</span>
+                </button>
+
+                <!-- Focus / Fullscreen Mode -->
+                <button
+                  type="button"
+                  class="btn btn-sm btn-outline-secondary px-2"
+                  title="Mode lecture plein écran sans distraction"
+                  @click="toggleFocusMode"
+                >
+                  <i class="bi bi-arrows-fullscreen"></i>
+                </button>
+              </div>
             </div>
 
             <!-- Reading Prose Surface -->
@@ -391,6 +285,38 @@
 
           <div v-else class="text-center py-4 text-body-secondary">
             Segment introuvable.
+          </div>
+        </div>
+      </div>
+
+      <!-- Daily Vocabulary Review Widget (Moved to end of reading segment) -->
+      <div v-if="!isFocusMode && reviewWords.length > 0" class="card shadow-sm border-0 mb-4 border-start border-4 border-primary">
+        <div class="card-body p-3">
+          <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+            <h6 class="fw-bold mb-0 d-flex align-items-center gap-2 text-primary">
+              <i class="bi bi-lightbulb-fill"></i>
+              <span>Vocabulaire à réviser ({{ reviewWords.length }})</span>
+            </h6>
+            <RouterLink
+              :to="`/vocabulary?mode=flashcards&bookId=${book?.id || ''}`"
+              class="btn btn-sm btn-outline-primary rounded-pill py-0 px-2"
+            >
+              <i class="bi bi-play-circle me-1"></i>Lancer les Flashcards
+            </RouterLink>
+          </div>
+
+          <div class="d-flex flex-wrap gap-2 pt-1">
+            <button
+              v-for="rw in reviewWords"
+              :key="rw.id"
+              type="button"
+              class="btn btn-sm btn-light border rounded-pill d-inline-flex align-items-center gap-1 py-1 px-3 shadow-sm"
+              @click="triggerWordLookup(rw.word, rw.contextSentence)"
+            >
+              <span class="fw-semibold text-capitalize">{{ rw.word }}</span>
+              <span v-if="rw.masteryLevel === 2" class="text-success small ms-1" title="Maîtrisé">✓</span>
+              <span v-else class="text-warning small ms-1" title="À réviser">●</span>
+            </button>
           </div>
         </div>
       </div>
@@ -630,6 +556,182 @@
       </div>
     </div>
 
+    <!-- Reading Options Drawer "Aa" (Kindle / Apple Books style) -->
+    <div
+      v-if="showReadingOptionsDrawer"
+      class="modal-backdrop fade show"
+      style="z-index: 1075"
+      @click="showReadingOptionsDrawer = false"
+    ></div>
+
+    <div
+      class="offcanvas offcanvas-end show"
+      tabindex="-1"
+      style="z-index: 1080; visibility: visible;"
+      v-if="showReadingOptionsDrawer"
+    >
+      <div class="offcanvas-header border-bottom">
+        <h5 class="offcanvas-title fw-bold d-flex align-items-center gap-2">
+          <span class="fs-5" style="font-family: serif;">Aa</span>
+          <span>Confort de lecture</span>
+        </h5>
+        <button type="button" class="btn-close" aria-label="Fermer" @click="showReadingOptionsDrawer = false"></button>
+      </div>
+
+      <div class="offcanvas-body p-3">
+        <!-- Police de caractères -->
+        <div class="mb-4">
+          <label class="form-label fw-semibold small text-body-secondary mb-2">Police de caractères</label>
+          <div class="row g-2">
+            <div
+              v-for="f in ['Georgia', 'Merriweather', 'Open Sans', 'Arial']"
+              :key="f"
+              class="col-6"
+            >
+              <button
+                type="button"
+                class="btn btn-sm w-100 py-2 border text-start d-flex justify-content-between align-items-center"
+                :class="settingsStore.fontFamily === f ? 'btn-primary' : 'btn-outline-light text-body border-secondary-subtle'"
+                :style="{ fontFamily: f }"
+                @click="settingsStore.fontFamily = f"
+              >
+                <span>{{ f }}</span>
+                <i v-if="settingsStore.fontFamily === f" class="bi bi-check2"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Taille de texte -->
+        <div class="mb-4">
+          <label class="form-label fw-semibold small text-body-secondary mb-2">Taille du texte</label>
+          <div class="d-flex align-items-center justify-content-between bg-body-tertiary rounded-3 p-2 border">
+            <button
+              type="button"
+              class="btn btn-outline-secondary btn-sm px-3"
+              :disabled="settingsStore.fontSize <= 12"
+              @click="settingsStore.fontSize = Math.max(12, settingsStore.fontSize - 1)"
+            >
+              <span class="fw-bold" style="font-size: 0.85rem">A-</span>
+            </button>
+            <span class="fw-bold fs-6">{{ settingsStore.fontSize }} px</span>
+            <button
+              type="button"
+              class="btn btn-outline-secondary btn-sm px-3"
+              :disabled="settingsStore.fontSize >= 32"
+              @click="settingsStore.fontSize = Math.min(32, settingsStore.fontSize + 1)"
+            >
+              <span class="fw-bold" style="font-size: 1.15rem">A+</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Thèmes de lecture -->
+        <div class="mb-4">
+          <label class="form-label fw-semibold small text-body-secondary mb-2">Thème de lecture</label>
+          <div class="row g-2">
+            <div class="col-6">
+              <button
+                type="button"
+                class="btn btn-sm w-100 p-2 text-center rounded-3 border d-flex flex-column align-items-center gap-1"
+                :class="settingsStore.readingTheme === 'default' ? 'border-primary border-2 shadow-sm' : 'border-secondary-subtle'"
+                style="background-color: var(--bs-body-bg); color: var(--bs-body-color);"
+                @click="settingsStore.readingTheme = 'default'"
+              >
+                <i class="bi bi-circle-half fs-5"></i>
+                <span class="small fw-semibold">Défaut</span>
+              </button>
+            </div>
+            <div class="col-6">
+              <button
+                type="button"
+                class="btn btn-sm w-100 p-2 text-center rounded-3 border d-flex flex-column align-items-center gap-1"
+                :class="settingsStore.readingTheme === 'sepia' ? 'border-primary border-2 shadow-sm' : 'border-secondary-subtle'"
+                style="background-color: #fbf0d9; color: #5f4b32;"
+                @click="settingsStore.readingTheme = 'sepia'"
+              >
+                <i class="bi bi-sun-fill fs-5" style="color: #c29d59;"></i>
+                <span class="small fw-semibold">Sépia</span>
+              </button>
+            </div>
+            <div class="col-6">
+              <button
+                type="button"
+                class="btn btn-sm w-100 p-2 text-center rounded-3 border d-flex flex-column align-items-center gap-1"
+                :class="settingsStore.readingTheme === 'ivory' ? 'border-primary border-2 shadow-sm' : 'border-secondary-subtle'"
+                style="background-color: #fdf6e2; color: #383a42;"
+                @click="settingsStore.readingTheme = 'ivory'"
+              >
+                <i class="bi bi-brightness-high fs-5" style="color: #d97706;"></i>
+                <span class="small fw-semibold">Ivoire</span>
+              </button>
+            </div>
+            <div class="col-6">
+              <button
+                type="button"
+                class="btn btn-sm w-100 p-2 text-center rounded-3 border d-flex flex-column align-items-center gap-1"
+                :class="settingsStore.readingTheme === 'oled' ? 'border-primary border-2 shadow-sm' : 'border-secondary-subtle'"
+                style="background-color: #000000; color: #d1d5db;"
+                @click="settingsStore.readingTheme = 'oled'"
+              >
+                <i class="bi bi-moon-stars-fill fs-5 text-light"></i>
+                <span class="small fw-semibold text-light">Noir OLED</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Mode de lecture (Défilement vs Pages) -->
+        <div class="mb-4">
+          <label class="form-label fw-semibold small text-body-secondary mb-2">Mode de lecture</label>
+          <div class="btn-group w-100" role="group">
+            <button
+              type="button"
+              class="btn btn-sm py-2"
+              :class="settingsStore.readingMode !== 'paginated' ? 'btn-primary' : 'btn-outline-secondary'"
+              @click="settingsStore.readingMode = 'scroll'"
+            >
+              <i class="bi bi-card-text me-1"></i>Défilement
+            </button>
+            <button
+              type="button"
+              class="btn btn-sm py-2"
+              :class="settingsStore.readingMode === 'paginated' ? 'btn-primary' : 'btn-outline-secondary'"
+              @click="settingsStore.readingMode = 'paginated'"
+            >
+              <i class="bi bi-book-half me-1"></i>Pages (Livre)
+            </button>
+          </div>
+        </div>
+
+        <!-- Options supplémentaires -->
+        <div class="mb-3 pt-2 border-top">
+          <div class="form-check form-switch mb-3">
+            <input
+              id="vocabHighlightCheck"
+              v-model="settingsStore.highlightVocabularyWords"
+              class="form-check-input"
+              type="checkbox"
+            />
+            <label class="form-check-label small" for="vocabHighlightCheck">
+              Surligner le vocabulaire enregistré
+            </label>
+          </div>
+
+          <div class="d-grid gap-2">
+            <RouterLink
+              to="/vocabulary"
+              class="btn btn-outline-secondary btn-sm text-start d-flex justify-content-between align-items-center"
+              @click="showReadingOptionsDrawer = false"
+            >
+              <span><i class="bi bi-journal-bookmark me-2 text-primary"></i>Mon carnet de vocabulaire</span>
+              <i class="bi bi-chevron-right small"></i>
+            </RouterLink>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Quote Card Generator Modal (Axe 3) -->
     <QuoteCardModal
       :show="showQuoteModal"
@@ -693,6 +795,7 @@ const activeAudioSentence = ref(null);
 
 // TOC Drawer & Search (Axe 4)
 const showTocDrawer = ref(false);
+const showReadingOptionsDrawer = ref(false);
 const searchBookQuery = ref('');
 const searchActive = ref(false);
 const searchResults = ref([]);
