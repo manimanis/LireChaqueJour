@@ -229,6 +229,7 @@
 
             <!-- Reading Prose Surface -->
             <div
+              ref="readingProseRef"
               class="reading-prose"
               :style="readingStyle"
               @click="handleReadingProseClick"
@@ -740,11 +741,43 @@
       :author="book?.author"
       @close="showQuoteModal = false"
     />
+
+    <!-- Bottom Reading Progress Bar -->
+    <div
+      v-if="currentSegment"
+      class="reading-progress-bar border-top shadow-sm"
+      :class="{ 'reading-progress-bar-focus': isFocusMode }"
+    >
+      <div class="progress rounded-0" style="height: 3px; background-color: rgba(var(--bs-primary-rgb), 0.15);">
+        <div
+          class="progress-bar bg-primary"
+          role="progressbar"
+          :style="{ width: `${readingProgressPercent}%`, transition: 'width 0.15s ease-out' }"
+          :aria-valuenow="readingProgressPercent"
+          aria-valuemin="0"
+          aria-valuemax="100"
+        ></div>
+      </div>
+      <div class="container d-flex justify-content-between align-items-center py-1 px-3 small">
+        <span class="text-body-secondary fw-medium">
+          <template v-if="settingsStore.readingMode === 'paginated'">
+            Page {{ currentPageIdx + 1 }} / {{ paginatedPages.length }} • {{ readingProgressPercent }} %
+          </template>
+          <template v-else>
+            Segment : {{ readingProgressPercent }} %
+          </template>
+        </span>
+        <span class="text-body-secondary">
+          Livre : <strong class="text-body">{{ progress.completion }} %</strong>
+          <span class="d-none d-sm-inline"> (Jour {{ displayedDay }} / {{ book.totalSegments }})</span>
+        </span>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
+import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useLibraryStore } from '@/stores/libraryStore.js';
 import { useSettingsStore } from '@/stores/settingsStore.js';
@@ -765,6 +798,8 @@ const libraryStore = useLibraryStore();
 const settingsStore = useSettingsStore();
 
 const summarySectionRef = ref(null);
+const readingProseRef = ref(null);
+const scrollProgressPercent = ref(0);
 const currentSegment = ref(null);
 const segmentLoading = ref(false);
 const summaryText = ref('');
@@ -1137,6 +1172,8 @@ async function loadSegmentAndSummary(dayNum) {
   if (showAudioPlayer.value) {
     setupAudioReader();
   }
+  await nextTick();
+  updateScrollProgress();
 }
 
 async function loadSummary(force = false) {
@@ -1169,8 +1206,47 @@ watch(
   { immediate: true }
 );
 
+const readingProgressPercent = computed(() => {
+  if (settingsStore.readingMode === 'paginated') {
+    if (!paginatedPages.value.length) return 0;
+    return Math.min(100, Math.round(((currentPageIdx.value + 1) / paginatedPages.value.length) * 100));
+  }
+  return scrollProgressPercent.value;
+});
+
+function updateScrollProgress() {
+  if (settingsStore.readingMode === 'paginated') return;
+  const el = readingProseRef.value;
+  if (!el) {
+    scrollProgressPercent.value = 0;
+    return;
+  }
+  const rect = el.getBoundingClientRect();
+  const elTop = rect.top + window.scrollY;
+  const elBottom = elTop + rect.height;
+  const startScrollY = Math.max(0, elTop - 120);
+  const endScrollY = Math.max(0, elBottom - window.innerHeight + 120);
+
+  if (endScrollY <= startScrollY) {
+    scrollProgressPercent.value = 100;
+    return;
+  }
+  const raw = ((window.scrollY - startScrollY) / (endScrollY - startScrollY)) * 100;
+  scrollProgressPercent.value = Math.min(100, Math.max(0, Math.round(raw)));
+}
+
+watch(
+  () => [settingsStore.fontSize, settingsStore.fontFamily, settingsStore.readingMode],
+  async () => {
+    await nextTick();
+    updateScrollProgress();
+  }
+);
+
 onMounted(() => {
   window.addEventListener('focus', loadVocab);
+  window.addEventListener('scroll', updateScrollProgress, { passive: true });
+  window.addEventListener('resize', updateScrollProgress, { passive: true });
   document.addEventListener('selectionchange', onTextSelectionChange);
 
   // Audio reader listeners
@@ -1192,6 +1268,8 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.removeEventListener('focus', loadVocab);
+  window.removeEventListener('scroll', updateScrollProgress);
+  window.removeEventListener('resize', updateScrollProgress);
   document.removeEventListener('selectionchange', onTextSelectionChange);
   globalAudioReader.stop();
   if (typeof document !== 'undefined') {
@@ -1270,5 +1348,22 @@ function scrollToSummary() {
   transition: background-color 0.2s ease, color 0.2s ease;
   border-radius: 12px;
   padding: 8px;
+  padding-bottom: 2.75rem;
+}
+
+.reading-progress-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1025;
+  background-color: rgba(var(--bs-tertiary-bg-rgb, 248, 249, 250), 0.94);
+  backdrop-filter: blur(8px);
+}
+
+@media (max-width: 767.98px) {
+  .reading-progress-bar:not(.reading-progress-bar-focus) {
+    bottom: calc(var(--mobile-nav-height, 3.75rem) + env(safe-area-inset-bottom, 0px));
+  }
 }
 </style>
