@@ -215,6 +215,7 @@ import {
 } from 'chart.js';
 import { useLibraryStore } from '@/stores/libraryStore.js';
 import { BADGES_CATALOG, evaluateBadges } from '@/services/badgeService.js';
+import { getLocalIsoDate, toLocalIsoDate } from '@/utils/dateUtils.js';
 
 Chart.register(
   BarController,
@@ -265,12 +266,12 @@ function buildWeeklyData() {
     const start = new Date(end);
     start.setDate(end.getDate() - 6);
 
-    const startStr = start.toISOString().slice(0, 10);
-    const endStr = end.toISOString().slice(0, 10);
+    const startStr = getLocalIsoDate(start);
+    const endStr = getLocalIsoDate(end);
 
     const words = libraryStore.sessions
       .filter((s) => {
-        const d = (s.date || '').slice(0, 10);
+        const d = toLocalIsoDate(s.date);
         return d >= startStr && d <= endStr;
       })
       .reduce((sum, s) => sum + (s.wordCount || 0), 0);
@@ -290,7 +291,7 @@ function buildMonthlyData() {
     const d = new Date(now.getFullYear(), now.getMonth() - m, 1);
     const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
     const count = libraryStore.sessions.filter((s) =>
-      (s.date || '').startsWith(ym)
+      toLocalIsoDate(s.date).startsWith(ym)
     ).length;
 
     labels.push(d.toLocaleDateString('fr-FR', { month: 'short', year: '2-digit' }));
@@ -307,9 +308,9 @@ function buildStreakData() {
   for (let d = 13; d >= 0; d--) {
     const date = new Date(now);
     date.setDate(now.getDate() - d);
-    const iso = date.toISOString().slice(0, 10);
+    const iso = getLocalIsoDate(date);
     const words = libraryStore.sessions
-      .filter((s) => (s.date || '').startsWith(iso))
+      .filter((s) => toLocalIsoDate(s.date) === iso)
       .reduce((sum, s) => sum + (s.wordCount || 0), 0);
 
     labels.push(date.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }));

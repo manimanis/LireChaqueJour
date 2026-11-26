@@ -4,10 +4,11 @@ import db from '@/db/database.js';
 import { parseEpubFile } from '@/services/epubParser.js';
 import { segmentText, estimateReadingMinutes } from '@/services/segmenter.js';
 import { generateLocalSummary } from '@/services/summarizer.js';
+import { getLocalIsoDate, toLocalIsoDate } from '@/utils/dateUtils.js';
 import { useSettingsStore } from './settingsStore.js';
 
 function getTodayIso() {
-  return new Date().toISOString().slice(0, 10);
+  return getLocalIsoDate();
 }
 
 export const useLibraryStore = defineStore('library', () => {
@@ -307,12 +308,14 @@ export const useLibraryStore = defineStore('library', () => {
       db.progress,
       db.summaries,
       db.vocabulary,
+      db.highlights,
       async () => {
         await db.books.delete(bookId);
         await db.segments.where('bookId').equals(bookId).delete();
         await db.progress.delete(bookId);
         await db.summaries.where('bookId').equals(bookId).delete();
         await db.vocabulary.where('bookId').equals(bookId).delete();
+        await db.highlights.where('bookId').equals(bookId).delete();
       }
     );
 
@@ -385,20 +388,20 @@ export const useLibraryStore = defineStore('library', () => {
   const consecutiveDaysStreak = computed(() => {
     if (sessions.value.length === 0) return 0;
     const uniqueDays = new Set(
-      sessions.value.map((s) => (s.date || '').slice(0, 10)).filter(Boolean)
+      sessions.value.map((s) => toLocalIsoDate(s.date)).filter(Boolean)
     );
     if (uniqueDays.size === 0) return 0;
 
     let streak = 0;
     const cursor = new Date();
-    const todayStr = cursor.toISOString().slice(0, 10);
+    const todayStr = getLocalIsoDate(cursor);
 
     // If user hasn't read today yet, allow streak starting from yesterday
     if (!uniqueDays.has(todayStr)) {
       cursor.setDate(cursor.getDate() - 1);
     }
 
-    while (uniqueDays.has(cursor.toISOString().slice(0, 10))) {
+    while (uniqueDays.has(getLocalIsoDate(cursor))) {
       streak++;
       cursor.setDate(cursor.getDate() - 1);
     }
@@ -412,7 +415,7 @@ export const useLibraryStore = defineStore('library', () => {
     const prog = getProgress(book.id);
     if (prog.completion >= 100) return false;
     const today = getTodayIso();
-    if (prog.lastReadingDate?.slice(0, 10) === today) return false;
+    if (toLocalIsoDate(prog.lastReadingDate) === today) return false;
     if (prog.postponedDate === today) return false;
     if (!book.readWeekends) {
       const day = new Date().getDay();
@@ -422,17 +425,25 @@ export const useLibraryStore = defineStore('library', () => {
   });
 
   async function exportBackup() {
-    const [allBooks, allSegments, allProgress, allSummaries, allSessions, allVocabulary] =
-      await Promise.all([
-        db.books.toArray(),
-        db.segments.toArray(),
-        db.progress.toArray(),
-        db.summaries.toArray(),
-        db.sessions.toArray(),
-        db.vocabulary.toArray(),
-        db.highlights.toArray(),
-        db.badges.toArray(),
-      ]);
+    const [
+      allBooks,
+      allSegments,
+      allProgress,
+      allSummaries,
+      allSessions,
+      allVocabulary,
+      allHighlights,
+      allBadges,
+    ] = await Promise.all([
+      db.books.toArray(),
+      db.segments.toArray(),
+      db.progress.toArray(),
+      db.summaries.toArray(),
+      db.sessions.toArray(),
+      db.vocabulary.toArray(),
+      db.highlights.toArray(),
+      db.badges.toArray(),
+    ]);
 
     return JSON.stringify(
       {

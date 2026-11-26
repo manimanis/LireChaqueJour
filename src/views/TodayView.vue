@@ -92,70 +92,15 @@
       </div>
 
       <!-- Audio Reader Player Bar (Axe 1) -->
-      <div
-        v-if="showAudioPlayer"
-        class="card border-0 shadow-sm mb-4 bg-primary text-white overflow-hidden rounded-4 animate-fade-in"
-      >
-        <div class="card-body py-2 px-3 d-flex flex-wrap align-items-center justify-content-between gap-2">
-          <div class="d-flex align-items-center gap-2">
-            <button
-              type="button"
-              class="btn btn-sm btn-light rounded-circle p-2 lh-1 text-primary shadow-sm"
-              :title="audioState.isPlaying ? 'Mettre en pause' : 'Écouter'"
-              @click="toggleAudioPlay"
-            >
-              <i class="bi" :class="audioState.isPlaying ? 'bi-pause-fill fs-5' : 'bi-play-fill fs-5'"></i>
-            </button>
-
-            <button
-              type="button"
-              class="btn btn-sm btn-outline-light rounded-circle p-1 lh-1"
-              title="Phrase précédente"
-              @click="globalAudioReader.prev()"
-            >
-              <i class="bi bi-chevron-left"></i>
-            </button>
-
-            <button
-              type="button"
-              class="btn btn-sm btn-outline-light rounded-circle p-1 lh-1"
-              title="Phrase suivante"
-              @click="globalAudioReader.next()"
-            >
-              <i class="bi bi-chevron-right"></i>
-            </button>
-
-            <div class="small ms-1 d-flex flex-column">
-              <span class="fw-semibold">Livre Audio (TTS)</span>
-              <span class="opacity-75" style="font-size: 0.75rem">
-                Phrase {{ audioState.currentIndex + 1 }} / {{ audioState.totalSentences }}
-              </span>
-            </div>
-          </div>
-
-          <div class="d-flex align-items-center gap-2">
-            <!-- Playback Speed -->
-            <button
-              type="button"
-              class="btn btn-sm btn-outline-light rounded-pill px-2 py-0"
-              style="font-size: 0.8rem"
-              title="Vitesse de lecture"
-              @click="cycleAudioRate"
-            >
-              {{ audioState.rate }}x
-            </button>
-
-            <button
-              type="button"
-              class="btn btn-sm btn-link text-white text-decoration-none p-0 ms-2 opacity-75"
-              title="Fermer le lecteur audio"
-              @click="closeAudioPlayer"
-            >
-              <i class="bi bi-x-lg"></i>
-            </button>
-          </div>
-        </div>
-      </div>
+      <AudioPlayerBar
+        :show="showAudioPlayer"
+        :audio-state="audioState"
+        @toggle-play="toggleAudioPlay"
+        @prev="globalAudioReader.prev()"
+        @next="globalAudioReader.next()"
+        @cycle-rate="cycleAudioRate"
+        @close="closeAudioPlayer"
+      />
 
       <!-- Segment Content -->
       <div
@@ -456,282 +401,25 @@
     </div>
 
     <!-- Table of Contents & Search Offcanvas / Drawer (Axe 4) -->
-    <div
-      v-if="showTocDrawer"
-      class="modal-backdrop fade show"
-      style="z-index: 1075"
-      @click="showTocDrawer = false"
-    ></div>
-
-    <div
-      class="offcanvas offcanvas-start show"
-      :class="{ show: showTocDrawer }"
-      tabindex="-1"
-      style="z-index: 1080; visibility: visible;"
-      v-if="showTocDrawer"
-    >
-      <div class="offcanvas-header border-bottom">
-        <h5 class="offcanvas-title fw-bold d-flex align-items-center gap-2">
-          <i class="bi bi-book-half text-primary"></i>
-          <span>Structure du livre</span>
-        </h5>
-        <button type="button" class="btn-close" aria-label="Fermer" @click="showTocDrawer = false"></button>
-      </div>
-
-      <div class="offcanvas-body p-3">
-        <!-- Search bar across book -->
-        <div class="mb-3">
-          <div class="input-group input-group-sm">
-            <span class="input-group-text"><i class="bi bi-search"></i></span>
-            <input
-              v-model="searchBookQuery"
-              type="text"
-              class="form-control"
-              placeholder="Rechercher dans tout le livre…"
-              @keyup.enter="performBookSearch"
-            />
-            <button class="btn btn-primary" type="button" @click="performBookSearch">
-              Chercher
-            </button>
-          </div>
-        </div>
-
-        <!-- Search Results (if query) -->
-        <div v-if="searchActive" class="mb-4">
-          <div class="d-flex justify-content-between align-items-center mb-2">
-            <span class="small fw-bold">Résultats ({{ searchResults.length }}) :</span>
-            <button type="button" class="btn btn-link btn-sm p-0 small" @click="clearBookSearch">
-              Effacer
-            </button>
-          </div>
-
-          <div v-if="searchResults.length === 0" class="text-body-secondary small py-2">
-            Aucun résultat trouvé pour « {{ searchBookQuery }} ».
-          </div>
-
-          <div class="list-group list-group-flush small">
-            <button
-              v-for="(res, rIdx) in searchResults"
-              :key="rIdx"
-              type="button"
-              class="list-group-item list-group-item-action text-start p-2"
-              @click="jumpToSearchResult(res.dayNumber)"
-            >
-              <div class="fw-bold text-primary mb-1">Jour {{ res.dayNumber }}</div>
-              <div class="text-body-secondary fst-italic">« ...{{ res.snippet }}... »</div>
-            </button>
-          </div>
-        </div>
-
-        <!-- Table of Contents Chapters -->
-        <div>
-          <h6 class="fw-bold text-uppercase small text-body-secondary mb-2">
-            Chapitres & Segments
-          </h6>
-
-          <div class="list-group list-group-flush small">
-            <button
-              v-for="day in (book?.totalSegments || 1)"
-              :key="day"
-              type="button"
-              class="list-group-item list-group-item-action d-flex align-items-center justify-content-between p-2 rounded-2 mb-1"
-              :class="{
-                'active text-white': day === displayedDay,
-                'list-group-item-light': day !== displayedDay && progress?.completedSegments?.includes(day),
-              }"
-              @click="selectDayFromToc(day)"
-            >
-              <div class="d-flex align-items-center gap-2">
-                <i
-                  class="bi"
-                  :class="progress?.completedSegments?.includes(day) ? 'bi-check-circle-fill text-success' : 'bi-circle text-body-tertiary'"
-                ></i>
-                <span class="fw-semibold">Jour {{ day }}</span>
-              </div>
-              <span class="badge" :class="day === displayedDay ? 'bg-light text-primary' : 'bg-secondary-subtle text-secondary'">
-                {{ day === displayedDay ? 'En cours' : (progress?.completedSegments?.includes(day) ? 'Lu' : '') }}
-              </span>
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+    <TocDrawer
+      :show="showTocDrawer"
+      :total-segments="book?.totalSegments || 1"
+      :displayed-day="displayedDay"
+      :completed-segments="progress?.completedSegments || []"
+      v-model:search-query="searchBookQuery"
+      :search-active="searchActive"
+      :search-results="searchResults"
+      @close="showTocDrawer = false"
+      @select-day="selectDayFromToc"
+      @search="performBookSearch"
+      @clear-search="clearBookSearch"
+    />
 
     <!-- Reading Options Drawer "Aa" (Kindle / Apple Books style) -->
-    <div
-      v-if="showReadingOptionsDrawer"
-      class="modal-backdrop fade show"
-      style="z-index: 1075"
-      @click="showReadingOptionsDrawer = false"
-    ></div>
-
-    <div
-      class="offcanvas offcanvas-end show"
-      tabindex="-1"
-      style="z-index: 1080; visibility: visible;"
-      v-if="showReadingOptionsDrawer"
-    >
-      <div class="offcanvas-header border-bottom">
-        <h5 class="offcanvas-title fw-bold d-flex align-items-center gap-2">
-          <span class="fs-5" style="font-family: serif;">Aa</span>
-          <span>Confort de lecture</span>
-        </h5>
-        <button type="button" class="btn-close" aria-label="Fermer" @click="showReadingOptionsDrawer = false"></button>
-      </div>
-
-      <div class="offcanvas-body p-3">
-        <!-- Police de caractères -->
-        <div class="mb-4">
-          <label class="form-label fw-semibold small text-body-secondary mb-2">Police de caractères</label>
-          <div class="row g-2">
-            <div
-              v-for="f in ['Georgia', 'Merriweather', 'Open Sans', 'Arial']"
-              :key="f"
-              class="col-6"
-            >
-              <button
-                type="button"
-                class="btn btn-sm w-100 py-2 border text-start d-flex justify-content-between align-items-center"
-                :class="settingsStore.fontFamily === f ? 'btn-primary' : 'btn-outline-light text-body border-secondary-subtle'"
-                :style="{ fontFamily: f }"
-                @click="settingsStore.fontFamily = f"
-              >
-                <span>{{ f }}</span>
-                <i v-if="settingsStore.fontFamily === f" class="bi bi-check2"></i>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Taille de texte -->
-        <div class="mb-4">
-          <label class="form-label fw-semibold small text-body-secondary mb-2">Taille du texte</label>
-          <div class="d-flex align-items-center justify-content-between bg-body-tertiary rounded-3 p-2 border">
-            <button
-              type="button"
-              class="btn btn-outline-secondary btn-sm px-3"
-              :disabled="settingsStore.fontSize <= 12"
-              @click="settingsStore.fontSize = Math.max(12, settingsStore.fontSize - 1)"
-            >
-              <span class="fw-bold" style="font-size: 0.85rem">A-</span>
-            </button>
-            <span class="fw-bold fs-6">{{ settingsStore.fontSize }} px</span>
-            <button
-              type="button"
-              class="btn btn-outline-secondary btn-sm px-3"
-              :disabled="settingsStore.fontSize >= 32"
-              @click="settingsStore.fontSize = Math.min(32, settingsStore.fontSize + 1)"
-            >
-              <span class="fw-bold" style="font-size: 1.15rem">A+</span>
-            </button>
-          </div>
-        </div>
-
-        <!-- Thèmes de lecture -->
-        <div class="mb-4">
-          <label class="form-label fw-semibold small text-body-secondary mb-2">Thème de lecture</label>
-          <div class="row g-2">
-            <div class="col-6">
-              <button
-                type="button"
-                class="btn btn-sm w-100 p-2 text-center rounded-3 border d-flex flex-column align-items-center gap-1"
-                :class="settingsStore.readingTheme === 'default' ? 'border-primary border-2 shadow-sm' : 'border-secondary-subtle'"
-                style="background-color: var(--bs-body-bg); color: var(--bs-body-color);"
-                @click="settingsStore.readingTheme = 'default'"
-              >
-                <i class="bi bi-circle-half fs-5"></i>
-                <span class="small fw-semibold">Défaut</span>
-              </button>
-            </div>
-            <div class="col-6">
-              <button
-                type="button"
-                class="btn btn-sm w-100 p-2 text-center rounded-3 border d-flex flex-column align-items-center gap-1"
-                :class="settingsStore.readingTheme === 'sepia' ? 'border-primary border-2 shadow-sm' : 'border-secondary-subtle'"
-                style="background-color: #fbf0d9; color: #5f4b32;"
-                @click="settingsStore.readingTheme = 'sepia'"
-              >
-                <i class="bi bi-sun-fill fs-5" style="color: #c29d59;"></i>
-                <span class="small fw-semibold">Sépia</span>
-              </button>
-            </div>
-            <div class="col-6">
-              <button
-                type="button"
-                class="btn btn-sm w-100 p-2 text-center rounded-3 border d-flex flex-column align-items-center gap-1"
-                :class="settingsStore.readingTheme === 'ivory' ? 'border-primary border-2 shadow-sm' : 'border-secondary-subtle'"
-                style="background-color: #fdf6e2; color: #383a42;"
-                @click="settingsStore.readingTheme = 'ivory'"
-              >
-                <i class="bi bi-brightness-high fs-5" style="color: #d97706;"></i>
-                <span class="small fw-semibold">Ivoire</span>
-              </button>
-            </div>
-            <div class="col-6">
-              <button
-                type="button"
-                class="btn btn-sm w-100 p-2 text-center rounded-3 border d-flex flex-column align-items-center gap-1"
-                :class="settingsStore.readingTheme === 'oled' ? 'border-primary border-2 shadow-sm' : 'border-secondary-subtle'"
-                style="background-color: #000000; color: #d1d5db;"
-                @click="settingsStore.readingTheme = 'oled'"
-              >
-                <i class="bi bi-moon-stars-fill fs-5 text-light"></i>
-                <span class="small fw-semibold text-light">Noir OLED</span>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Mode de lecture (Défilement vs Pages) -->
-        <div class="mb-4">
-          <label class="form-label fw-semibold small text-body-secondary mb-2">Mode de lecture</label>
-          <div class="btn-group w-100" role="group">
-            <button
-              type="button"
-              class="btn btn-sm py-2"
-              :class="settingsStore.readingMode !== 'paginated' ? 'btn-primary' : 'btn-outline-secondary'"
-              @click="settingsStore.readingMode = 'scroll'"
-            >
-              <i class="bi bi-card-text me-1"></i>Défilement
-            </button>
-            <button
-              type="button"
-              class="btn btn-sm py-2"
-              :class="settingsStore.readingMode === 'paginated' ? 'btn-primary' : 'btn-outline-secondary'"
-              @click="settingsStore.readingMode = 'paginated'"
-            >
-              <i class="bi bi-book-half me-1"></i>Pages (Livre)
-            </button>
-          </div>
-        </div>
-
-        <!-- Options supplémentaires -->
-        <div class="mb-3 pt-2 border-top">
-          <div class="form-check form-switch mb-3">
-            <input
-              id="vocabHighlightCheck"
-              v-model="settingsStore.highlightVocabularyWords"
-              class="form-check-input"
-              type="checkbox"
-            />
-            <label class="form-check-label small" for="vocabHighlightCheck">
-              Surligner le vocabulaire enregistré
-            </label>
-          </div>
-
-          <div class="d-grid gap-2">
-            <RouterLink
-              to="/vocabulary"
-              class="btn btn-outline-secondary btn-sm text-start d-flex justify-content-between align-items-center"
-              @click="showReadingOptionsDrawer = false"
-            >
-              <span><i class="bi bi-journal-bookmark me-2 text-primary"></i>Mon carnet de vocabulaire</span>
-              <i class="bi bi-chevron-right small"></i>
-            </RouterLink>
-          </div>
-        </div>
-      </div>
-    </div>
+    <ReadingOptionsDrawer
+      :show="showReadingOptionsDrawer"
+      @close="showReadingOptionsDrawer = false"
+    />
 
     <!-- Quote Card Generator Modal (Axe 3) -->
     <QuoteCardModal
@@ -785,12 +473,19 @@ import { estimateReadingMinutes } from '@/services/segmenter.js';
 import {
   triggerWordLookup,
   extractSentenceFromText,
-  cleanSelectedWord,
 } from '@/services/dictionaryService.js';
 import { globalAudioReader } from '@/services/audioReaderService.js';
 import { evaluateBadges } from '@/services/badgeService.js';
+import { getLocalIsoDate } from '@/utils/dateUtils.js';
+import {
+  renderHighlightedParagraph,
+  filterSearchSegments,
+} from '@/utils/readerHelpers.js';
 import SummaryCard from '@/components/SummaryCard.vue';
 import QuoteCardModal from '@/components/QuoteCardModal.vue';
+import AudioPlayerBar from '@/components/AudioPlayerBar.vue';
+import TocDrawer from '@/components/TocDrawer.vue';
+import ReadingOptionsDrawer from '@/components/ReadingOptionsDrawer.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -913,7 +608,7 @@ const isCurrentCompleted = computed(() =>
 );
 
 const isPostponedToday = computed(() => {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = getLocalIsoDate();
   return progress.value?.postponedDate === today;
 });
 
@@ -1054,40 +749,21 @@ function selectDayFromToc(day) {
 }
 
 async function performBookSearch() {
-  const q = searchBookQuery.value.trim().toLowerCase();
+  const q = searchBookQuery.value.trim();
   if (!q || !book.value) return;
 
   searchActive.value = true;
   searchResults.value = [];
 
   const segments = await libraryStore.getBookSegments(book.value.id);
-  const hits = [];
-
-  segments.forEach((seg) => {
-    const text = seg.content || '';
-    const idx = text.toLowerCase().indexOf(q);
-    if (idx !== -1) {
-      const start = Math.max(0, idx - 40);
-      const end = Math.min(text.length, idx + q.length + 40);
-      hits.push({
-        dayNumber: seg.dayNumber,
-        snippet: text.slice(start, end).replace(/\s+/g, ' ').trim(),
-      });
-    }
-  });
-
-  searchResults.value = hits.slice(0, 15);
+  const maxAllowed = progress.value?.currentSegment || 1;
+  searchResults.value = filterSearchSegments(segments, q, maxAllowed, 15);
 }
 
 function clearBookSearch() {
   searchBookQuery.value = '';
   searchActive.value = false;
   searchResults.value = [];
-}
-
-function jumpToSearchResult(day) {
-  showTocDrawer.value = false;
-  viewDay(day);
 }
 
 async function loadVocab() {
@@ -1101,51 +777,17 @@ async function loadVocab() {
   }
 }
 
-function escapeHtml(str) {
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
-}
-
 function renderParagraph(para, pIdx) {
-  let content = escapeHtml(para);
-
-  // Check TTS active sentence highlight (Axe 1)
-  if (
-    activeAudioSentence.value &&
-    activeAudioSentence.value.pIdx === pIdx &&
-    activeAudioSentence.value.text
-  ) {
-    const cleanS = escapeHtml(activeAudioSentence.value.text);
-    if (content.includes(cleanS)) {
-      content = content.replace(
-        cleanS,
-        `<span class="tts-active-sentence">${cleanS}</span>`
-      );
-    }
-  }
-
-  // Vocab highlight
-  if (settingsStore.highlightVocabularyWords && knownWords.value.size > 0) {
-    const tokens = content.split(/(\b[a-zA-ZÀ-ÿœæÇç-]+\b)/);
-    content = tokens
-      .map((token) => {
-        const cleaned = cleanSelectedWord(token).toLowerCase();
-        if (cleaned && knownWords.value.has(cleaned)) {
-          return `<mark class="vocab-highlight" data-word="${token}" title="Mot déjà consulté : cliquer pour revoir sa définition">${token}</mark>`;
-        }
-        return token;
-      })
-      .join('');
-  }
-
-  return content;
+  return renderHighlightedParagraph(para, pIdx, {
+    activeAudioSentence: activeAudioSentence.value,
+    highlights: userHighlights.value,
+    displayedDay: displayedDay.value,
+    knownWords: knownWords.value,
+    highlightVocabularyWords: settingsStore.highlightVocabularyWords,
+  });
 }
 
-function handleReadingProseClick(e) {
+async function handleReadingProseClick(e) {
   const mark = e.target.closest('.vocab-highlight');
   if (mark) {
     const word = mark.getAttribute('data-word');
@@ -1153,6 +795,16 @@ function handleReadingProseClick(e) {
       const paraText = mark.closest('p')?.textContent || '';
       const context = extractSentenceFromText(paraText, word);
       triggerWordLookup(word, context);
+    }
+    return;
+  }
+
+  const userMark = e.target.closest('.user-highlight');
+  if (userMark) {
+    const highlightId = Number(userMark.getAttribute('data-highlight-id'));
+    if (highlightId && confirm('Supprimer ce surlignage ?')) {
+      await libraryStore.deleteHighlight(highlightId);
+      await loadHighlights();
     }
   }
 }
@@ -1342,6 +994,29 @@ function scrollToSummary() {
 
 .reading-prose :deep(.vocab-highlight:hover) {
   background-color: rgba(var(--bs-primary-rgb), 0.28);
+}
+
+.reading-prose :deep(.user-highlight) {
+  color: inherit;
+  padding: 1px 3px;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.reading-prose :deep(.user-highlight-yellow) {
+  background-color: rgba(254, 240, 138, 0.65);
+}
+
+.reading-prose :deep(.user-highlight-green) {
+  background-color: rgba(187, 247, 208, 0.65);
+}
+
+.reading-prose :deep(.user-highlight-pink) {
+  background-color: rgba(251, 207, 232, 0.65);
+}
+
+.reading-prose :deep(.user-highlight-blue) {
+  background-color: rgba(186, 230, 253, 0.65);
 }
 
 .reading-surface {

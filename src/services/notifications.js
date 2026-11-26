@@ -1,3 +1,5 @@
+import { getLocalIsoDate } from '@/utils/dateUtils.js';
+
 const LAST_NOTIFIED_KEY = 'daily_reader_last_notification_date';
 
 /**
@@ -63,7 +65,7 @@ export function startNotificationScheduler(getState) {
     if (!isNotificationSupported() || Notification.permission !== 'granted') return;
 
     const now = new Date();
-    const todayStr = now.toISOString().slice(0, 10);
+    const todayStr = getLocalIsoDate(now);
     if (localStorage.getItem(LAST_NOTIFIED_KEY) === todayStr) return;
 
     const [targetH, targetM] = (time || '20:00').split(':').map(Number);
